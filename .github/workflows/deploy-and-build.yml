@@ -55,7 +55,6 @@ jobs:
 
   # =========================================================================
   # Job 2: Compile & Package Release-Ready Native Android APK Artifact
-  # Uses JDK 21 and Gradle 9.3.1 (Mandatory for AGP 9.1.1)
   # =========================================================================
   build-android-apk:
     runs-on: ubuntu-latest
@@ -71,10 +70,14 @@ jobs:
           java-version: '21'
           distribution: 'temurin'
 
-      - name: Setup Gradle 9.3.1
+      - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '9.3.1'
+
+      - name: Accept Android SDK Licenses
+        run: |
+          yes | sudo "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses || true
 
       - name: Ensure Debug Keystore Exists
         run: |
@@ -89,11 +92,33 @@ jobs:
           fi
           ls -lah debug.keystore
 
-      - name: Ensure Fallback Google Services Config
+      - name: Ensure Valid Google Services Config
         run: |
           if [ ! -f "app/google-services.json" ]; then
-            echo '{"project_info":{"project_number":"0","project_id":"nahralelm-app"},"client":[]}' > app/google-services.json
+            cat << 'EOF' > app/google-services.json
+          {
+            "project_info": {
+              "project_number": "1234567890",
+              "project_id": "nahralelm-app"
+            },
+            "client": [
+              {
+                "client_info": {
+                  "mobilesdk_app_id": "1:1234567890:android:abcdef",
+                  "android_client_info": {
+                    "package_name": "com.aistudio.nahralelm.bkzq"
+                  }
+                },
+                "oauth_client": [],
+                "api_key": [{ "current_key": "dummy_key" }],
+                "services": {}
+              }
+            ],
+            "configuration_version": "1"
+          }
+          EOF
           fi
+          cat app/google-services.json
 
       - name: Sync Web Assets into Android Assets Folder
         run: |
