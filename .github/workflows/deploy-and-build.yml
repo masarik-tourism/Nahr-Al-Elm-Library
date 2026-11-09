@@ -55,7 +55,7 @@ jobs:
 
   # =========================================================================
   # Job 2: Compile & Package Release-Ready Native Android APK Artifact
-  # Uses JDK 21 (required by AGP 9.1.1) and restores debug keystore automatically
+  # Uses JDK 21 and Gradle 9.3.1 (Mandatory for AGP 9.1.1)
   # =========================================================================
   build-android-apk:
     runs-on: ubuntu-latest
@@ -71,11 +71,10 @@ jobs:
           java-version: '21'
           distribution: 'temurin'
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Setup Gradle Environment
+      - name: Setup Gradle 9.3.1
         uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.3.1'
 
       - name: Ensure Debug Keystore Exists
         run: |
