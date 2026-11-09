@@ -10,7 +10,7 @@
 const STORE_DATA = {
   books: {
     title: "الكتب الخارجية لجميع المراحل الدراسية",
-    description: "أحدث طبعات 2024 / 2025 المعتمدة من وزارة التربية والتعليم والأزهر الشريف",
+    description: "أحدث سلاسل الكتب المعتمدة رسمياً من وزارة التربية والتعليم والأزهر الشريف",
     subFilters: ["الكل", "ابتدائي", "إعدادي", "ثانوي", "أزهري", "لغات"],
     items: [
       {
@@ -19,7 +19,7 @@ const STORE_DATA = {
         category: "كتب خارجية",
         sub: "لغات",
         stage: "ثانوي / إعدادي",
-        edition: "طبعة 2025 الحديثة",
+        edition: "نسخة أصلية معتمدة مع بنك الأسئلة",
         priceRange: "حسب الصف الدراسي",
         stock: "متوفر بجميع المراحل",
         badge: "الأكثر طلباً",
@@ -33,7 +33,7 @@ const STORE_DATA = {
         category: "كتب خارجية",
         sub: "ثانوي",
         stage: "المرحلة الثانوية",
-        edition: "طبعة 2025 المعتمدة",
+        edition: "المنهج المعتمد كامل مع نماذج البوكليت",
         priceRange: "سعر رسمي معتمد",
         stock: "متوفر بالمكتبة",
         badge: "ثانوية عامة",
@@ -47,7 +47,7 @@ const STORE_DATA = {
         category: "كتب خارجية",
         sub: "ابتدائي",
         stage: "من الأول حتى السادس الابتدائي",
-        edition: "طبعة 2025 الجديدة",
+        edition: "إصدار مخصص للمرحلة الابتدائية والأنشطة",
         priceRange: "أفضل سعر للمرحلة",
         stock: "متوفر كامل المواد",
         badge: "ابتدائي متميز",
@@ -61,7 +61,7 @@ const STORE_DATA = {
         category: "كتب خارجية",
         sub: "إعدادي",
         stage: "ابتدائي وإعدادي وثانوي",
-        edition: "طبعة 2025 الحديثة",
+        edition: "شامل المنهج الوزاري والمهام الأدائية",
         priceRange: "أسعار مناسبة",
         stock: "متوفر بالمكتبة",
         badge: "شامل المنهج",
@@ -75,7 +75,7 @@ const STORE_DATA = {
         category: "كتب خارجية",
         sub: "ثانوي",
         stage: "الصف الثالث الثانوي",
-        edition: "طبعة 2025 بنك الأسئلة",
+        edition: "بنك الأسئلة الشامل ونماذج الامتحانات",
         priceRange: "سعر خاص للطلاب",
         stock: "متوفر كميات",
         badge: "فيزياء ثانوية",
@@ -89,7 +89,7 @@ const STORE_DATA = {
         category: "كتب خارجية",
         sub: "أزهري",
         stage: "المرحلة الأزهرية (إعدادي وثانوي)",
-        edition: "طبعة 2025 الأزهرية",
+        edition: "المنهج الأزهري الشرعي والعربي المعتمد",
         priceRange: "سعر موحد",
         stock: "متوفر لجميع الصفوف",
         badge: "تعليم أزهري",
@@ -103,9 +103,9 @@ const STORE_DATA = {
         category: "كتب خارجية",
         sub: "لغات",
         stage: "جميع المراحل واللغات",
-        edition: "طبعة 2025 Connect & Connect Plus",
+        edition: "سلسلة اللغات Connect & Connect Plus المعتمدة",
         priceRange: "حسب المستوى",
-        stock: "متوفر طبعة جديدة",
+        stock: "متوفر بجميع المراحل",
         badge: "لغة إنجليزية",
         badgeColor: "bg-violet-600",
         description: "أقوى سلاسل الإنجليزي للمدارس الحكومية والتجريبية واللغات مع كتب القصة والتمارين والاستماع وقاموس المفردات المصور.",
@@ -117,7 +117,7 @@ const STORE_DATA = {
         category: "كتب خارجية",
         sub: "ثانوي",
         stage: "المرحلة الثانوية",
-        edition: "طبعة 2025 المنقحة",
+        edition: "شرح مركز وتلخيصات ونماذج تدريبية",
         priceRange: "سعر رسمي",
         stock: "متوفر فوري",
         badge: "مراجعة وتدريب",
@@ -760,24 +760,82 @@ function renderCatalog() {
 }
 
 // ==========================================
-// 7. Tab Switching & Search Listeners
+// 7. Tab Switching & Bottom Nav Synchronization
 // ==========================================
+const bottomNavItems = document.querySelectorAll(".bottom-nav-item");
+const storyChips = document.querySelectorAll(".story-chip");
+const quickSendPdfBtn = document.getElementById("quickSendPdfBtn");
+
+function setActiveCategory(catKey) {
+  if (!STORE_DATA[catKey]) return;
+  currentCategory = catKey;
+  currentSubFilter = "الكل";
+
+  // Sync Top Category Tabs
+  categoryTabs.forEach((tab) => {
+    if (tab.dataset.category === catKey) {
+      tab.classList.add('active', 'bg-brand-navy', 'text-white', 'shadow-sm');
+      tab.classList.remove('bg-slate-100', 'text-slate-700');
+    } else {
+      tab.classList.remove('active', 'bg-brand-navy', 'text-white', 'shadow-sm');
+      tab.classList.add('bg-slate-100', 'text-slate-700');
+    }
+  });
+
+  // Sync Bottom Navigation Bar Items
+  bottomNavItems.forEach((btn) => {
+    const isTarget = (btn.dataset.targetCategory === catKey);
+    const iconBox = btn.querySelector('.nav-icon-box');
+    if (isTarget) {
+      btn.classList.add('active', 'text-emerald-600', 'font-bold');
+      btn.classList.remove('text-slate-500');
+      if (iconBox) {
+        iconBox.classList.add('bg-emerald-50', 'text-emerald-600');
+        iconBox.classList.remove('text-slate-500');
+      }
+    } else {
+      btn.classList.remove('active', 'text-emerald-600', 'font-bold');
+      btn.classList.add('text-slate-500');
+      if (iconBox) {
+        iconBox.classList.remove('bg-emerald-50', 'text-emerald-600');
+        iconBox.classList.add('text-slate-500');
+      }
+    }
+  });
+
+  renderSubFilters();
+  renderCatalog();
+}
+
 categoryTabs.forEach((tab) => {
   tab.addEventListener('click', () => {
-    categoryTabs.forEach((t) => {
-      t.classList.remove('active', 'bg-brand-navy', 'text-white', 'shadow-md', 'shadow-brand-navy/20');
-      t.classList.add('bg-slate-100', 'text-slate-700');
-    });
-
-    tab.classList.remove('bg-slate-100', 'text-slate-700');
-    tab.classList.add('active', 'bg-brand-navy', 'text-white', 'shadow-md', 'shadow-brand-navy/20');
-
-    currentCategory = tab.dataset.category;
-    currentSubFilter = "الكل";
-    renderSubFilters();
-    renderCatalog();
+    setActiveCategory(tab.dataset.category);
   });
 });
+
+bottomNavItems.forEach((btn) => {
+  btn.addEventListener('click', () => {
+    setActiveCategory(btn.dataset.targetCategory);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+});
+
+storyChips.forEach((chip) => {
+  chip.addEventListener('click', () => {
+    const cat = chip.dataset.cat;
+    if (cat) {
+      setActiveCategory(cat);
+      window.scrollTo({ top: 220, behavior: 'smooth' });
+    }
+  });
+});
+
+if (quickSendPdfBtn) {
+  quickSendPdfBtn.addEventListener('click', () => {
+    const msg = `مرحباً مكتبة نهر العلم (إدارة أ/ إيهاب)، أود إرسال مذكرة / ملف PDF لطباعتها وتغليفها، برجاء إفادتي بالأسعار وموعد الاستلام. شكراً لك.`;
+    window.open(`https://wa.me/${WHATSAPP_PHONE}?text=${encodeURIComponent(msg)}`, '_blank');
+  });
+}
 
 if (searchInput) {
   searchInput.addEventListener('input', (e) => {
@@ -803,39 +861,14 @@ if (clearSearchBtn) {
 }
 
 // ==========================================
-// 8. Top Browser Mockup Chrome Actions
+// 8. Native App Header Actions
 // ==========================================
-// Home Button: Resets search, navigates to books and scrolls to top
-if (navHomeBtn) {
-  navHomeBtn.addEventListener('click', () => {
-    if (searchInput) searchInput.value = '';
-    searchQuery = '';
-    if (clearSearchBtn) clearSearchBtn.classList.add('hidden');
-    currentCategory = "books";
-    currentSubFilter = "الكل";
-
-    categoryTabs.forEach((t) => {
-      if (t.dataset.category === "books") {
-        t.classList.add('active', 'bg-brand-navy', 'text-white');
-        t.classList.remove('bg-slate-100', 'text-slate-700');
-      } else {
-        t.classList.remove('active', 'bg-brand-navy', 'text-white');
-        t.classList.add('bg-slate-100', 'text-slate-700');
-      }
-    });
-
-    renderSubFilters();
-    renderCatalog();
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  });
-}
-
-// Refresh Button: Animates spin and checks live OTA updates
+// Fast Refresh Button: Animates spin and checks live OTA updates
 if (navRefreshBtn) {
   navRefreshBtn.addEventListener('click', () => {
     if (refreshIcon) {
       refreshIcon.classList.add('animate-spin-once');
-      setTimeout(() => refreshIcon.classList.remove('animate-spin-once'), 800);
+      setTimeout(() => refreshIcon.classList.remove('animate-spin-once'), 700);
     }
 
     if ('serviceWorker' in navigator) {
@@ -844,7 +877,6 @@ if (navRefreshBtn) {
       });
     }
 
-    // Soft re-render
     renderCatalog();
   });
 }
@@ -854,7 +886,7 @@ if (navShareBtn) {
   navShareBtn.addEventListener('click', async () => {
     const shareData = {
       title: 'مكتبة نهر العلم - إدارة أ/ إيهاب',
-      text: 'تطبيق وموقع مكتبة نهر العلم للكتب الخارجية، خدمات المطبوعات والتصوير، والأدوات المدرسية والهدايا.',
+      text: 'تطبيق مكتبة نهر العلم للكتب الخارجية، المطبوعات والتصوير، والأدوات المدرسية والهدايا.',
       url: window.location.href
     };
 
@@ -866,7 +898,7 @@ if (navShareBtn) {
       }
     } else {
       navigator.clipboard.writeText(window.location.href).then(() => {
-        alert('تم نسخ رابط مكتبة نهر العلم إلى الحافظة بنجاح!');
+        alert('تم نسخ رابط تطبيق مكتبة نهر العلم إلى الحافظة بنجاح!');
       }).catch(() => {});
     }
   });
@@ -878,28 +910,20 @@ function updateOnlineStatus() {
   if (navigator.onLine) {
     connectionBadge.innerHTML = `
       <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-      أونلاين
+      <span>خدمة فورية</span>
     `;
-    connectionBadge.className = 'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30';
+    connectionBadge.className = 'hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-white/10 text-emerald-300 border border-white/10';
   } else {
     connectionBadge.innerHTML = `
       <span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
-      أوفلاين
+      <span>وضع عدم الاتصال</span>
     `;
-    connectionBadge.className = 'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30';
+    connectionBadge.className = 'hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30';
   }
 }
 window.addEventListener('online', updateOnlineStatus);
 window.addEventListener('offline', updateOnlineStatus);
 updateOnlineStatus();
-
-// Direct WhatsApp PDF quick link
-if (sendPdfHeroBtn) {
-  sendPdfHeroBtn.addEventListener('click', () => {
-    const message = `مرحباً مكتبة نهر العلم (إدارة أ/ إيهاب)، أريد إرسال ملف / مذكرة لطباعتها وتغليفها، برجاء إفادتي بالأسعار وموعد الاستلام. شكراً لك.`;
-    window.open(`https://wa.me/${WHATSAPP_PHONE}?text=${encodeURIComponent(message)}`, '_blank');
-  });
-}
 
 if (emptyStateWhatsappBtn) {
   emptyStateWhatsappBtn.addEventListener('click', () => {
@@ -919,3 +943,4 @@ document.addEventListener('DOMContentLoaded', () => {
   initServiceWorkerAndOTA();
   handleInstallButtonVisibility();
 });
+
