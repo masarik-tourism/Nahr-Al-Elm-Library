@@ -19,7 +19,7 @@ concurrency:
 jobs:
   # =========================================================================
   # Job 1: Build & Deploy Web Frontend & PWA for Over-The-Air (OTA) Updates
-  # Works automatically on all GitHub repositories (gh-pages branch & Actions)
+  # Deploys directly to gh-pages branch (Zero-error, automatic GitHub Pages)
   # =========================================================================
   deploy-web-ota:
     runs-on: ubuntu-latest
@@ -42,11 +42,9 @@ jobs:
           cp -r icons/* dist/icons/ 2>/dev/null || true
           cp icon-192.png dist/ 2>/dev/null || true
           cp icon-512.png dist/ 2>/dev/null || true
-          # Create .nojekyll to ensure GitHub Pages does not ignore underscore files
           touch dist/.nojekyll
           ls -lah dist/
 
-      # Primary deployment via GitHub Pages branch (Works 100% with zero configuration)
       - name: Deploy to GitHub Pages (gh-pages branch)
         uses: peaceiris/actions-gh-pages@v4
         with:
@@ -55,20 +53,9 @@ jobs:
           publish_branch: gh-pages
           force_orphan: true
 
-      # Secondary deployment if repository has GitHub Actions Pages enabled in Settings
-      - name: Upload Pages Artifact (Actions Mode)
-        uses: actions/upload-pages-artifact@v3
-        continue-on-error: true
-        with:
-          path: './dist'
-
-      - name: Deploy Pages (Actions Mode Fallback)
-        id: deployment
-        uses: actions/deploy-pages@v4
-        continue-on-error: true
-
   # =========================================================================
   # Job 2: Compile & Package Release-Ready Native Android APK Artifact
+  # Uses JDK 21 (required by AGP 9.1.1) and restores debug keystore automatically
   # =========================================================================
   build-android-apk:
     runs-on: ubuntu-latest
@@ -78,14 +65,30 @@ jobs:
       - name: Checkout Source Code
         uses: actions/checkout@v4
 
-      - name: Set up JDK 17
+      - name: Set up JDK 21 (Required for AGP 9.1.1)
         uses: actions/setup-java@v4
         with:
-          java-version: '17'
+          java-version: '21'
           distribution: 'temurin'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
 
       - name: Setup Gradle Environment
         uses: gradle/actions/setup-gradle@v4
+
+      - name: Ensure Debug Keystore Exists
+        run: |
+          if [ ! -f "debug.keystore" ]; then
+            if [ -f "debug.keystore.base64" ]; then
+              echo "Restoring debug.keystore from base64..."
+              base64 -d debug.keystore.base64 > debug.keystore
+            else
+              echo "Generating standard debug.keystore..."
+              keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
+            fi
+          fi
+          ls -lah debug.keystore
 
       - name: Ensure Fallback Google Services Config
         run: |
