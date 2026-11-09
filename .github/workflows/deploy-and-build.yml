@@ -17,12 +17,12 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  # Job 1: Build & Deploy Web Frontend & PWA to GitHub Pages for OTA Updates
+  # =========================================================================
+  # Job 1: Build & Deploy Web Frontend & PWA for Over-The-Air (OTA) Updates
+  # Works automatically on all GitHub repositories (gh-pages branch & Actions)
+  # =========================================================================
   deploy-web-ota:
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Checkout Source Code
         uses: actions/checkout@v4
@@ -31,28 +31,49 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'npm'
-        continue-on-error: true
 
-      - name: Run Build Scripts
+      - name: Prepare Web Assets for Live Hosting
         run: |
-          npm run build --if-present
+          mkdir -p dist/icons
+          cp index.html dist/
+          cp app.js dist/
+          cp sw.js dist/
+          cp manifest.json dist/
+          cp -r icons/* dist/icons/ 2>/dev/null || true
+          cp icon-192.png dist/ 2>/dev/null || true
+          cp icon-512.png dist/ 2>/dev/null || true
+          # Create .nojekyll to ensure GitHub Pages does not ignore underscore files
+          touch dist/.nojekyll
+          ls -lah dist/
 
-      - name: Configure GitHub Pages
-        uses: actions/configure-pages@v5
-
-      - name: Upload Pages Artifact
-        uses: actions/upload-pages-artifact@v3
+      # Primary deployment via GitHub Pages branch (Works 100% with zero configuration)
+      - name: Deploy to GitHub Pages (gh-pages branch)
+        uses: peaceiris/actions-gh-pages@v4
         with:
-          path: '.'
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./dist
+          publish_branch: gh-pages
+          force_orphan: true
 
-      - name: Deploy to GitHub Pages (Instant OTA Live Target)
+      # Secondary deployment if repository has GitHub Actions Pages enabled in Settings
+      - name: Upload Pages Artifact (Actions Mode)
+        uses: actions/upload-pages-artifact@v3
+        continue-on-error: true
+        with:
+          path: './dist'
+
+      - name: Deploy Pages (Actions Mode Fallback)
         id: deployment
         uses: actions/deploy-pages@v4
+        continue-on-error: true
 
-  # Job 2: Compile & Package Native Android APK Artifact
+  # =========================================================================
+  # Job 2: Compile & Package Release-Ready Native Android APK Artifact
+  # =========================================================================
   build-android-apk:
     runs-on: ubuntu-latest
+    env:
+      GRADLE_OPTS: "-Djava.awt.headless=true -Dorg.gradle.daemon=false -Dorg.gradle.jvmargs=-Xmx2560m"
     steps:
       - name: Checkout Source Code
         uses: actions/checkout@v4
@@ -62,35 +83,41 @@ jobs:
         with:
           java-version: '17'
           distribution: 'temurin'
-          cache: gradle
 
-      - name: Grant Execute Permission to Gradle
-        run: chmod +x gradlew || true
+      - name: Setup Gradle Environment
+        uses: gradle/actions/setup-gradle@v4
 
-      - name: Prepare Web Assets in Android Shell
+      - name: Ensure Fallback Google Services Config
         run: |
-          mkdir -p app/src/main/assets/icons
-          cp -r index.html app.js sw.js manifest.json icon-192.png icon-512.png app/src/main/assets/ || true
-          cp -r icons/* app/src/main/assets/icons/ || true
-
-      - name: Build Native Android APK (assembleDebug & assembleRelease)
-        run: |
-          if [ -f "./gradlew" ]; then
-            ./gradlew assembleDebug --stacktrace
-          else
-            gradle assembleDebug --stacktrace
+          if [ ! -f "app/google-services.json" ]; then
+            echo '{"project_info":{"project_number":"0","project_id":"nahralelm-app"},"client":[]}' > app/google-services.json
           fi
 
-      - name: Locate and Rename APK Artifact
+      - name: Sync Web Assets into Android Assets Folder
+        run: |
+          mkdir -p app/src/main/assets/icons
+          cp -f index.html app.js sw.js manifest.json app/src/main/assets/
+          cp -f icon-192.png icon-512.png app/src/main/assets/ 2>/dev/null || true
+          cp -rf icons/* app/src/main/assets/icons/ 2>/dev/null || true
+          ls -lah app/src/main/assets/
+
+      - name: Grant Execute Permission to Gradle Wrapper
+        run: chmod +x gradlew
+
+      - name: Compile Native Android APK (assembleDebug)
+        run: |
+          ./gradlew assembleDebug --no-daemon --stacktrace
+
+      - name: Locate and Package APK Artifact
         run: |
           mkdir -p build-output
           find app/build/outputs/apk/ -name "*.apk" -exec cp {} build-output/Nahr-Al-Elm-Library.apk \;
           ls -lah build-output/
 
-      - name: Upload Release-Ready Native Android APK
+      - name: Upload Native Android APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: Nahr-Al-Elm-Library-Android-APK
           path: build-output/Nahr-Al-Elm-Library.apk
           retention-days: 30
-          if-no-files-found: warn
+          if-no-files-found: error
