@@ -1,0 +1,6 @@
+{
+  "name": "مكتبة نهر العلم",
+  "description": "تطبيق مكتبة نهر العلم - إدارة أ/ إيهاب للكتب المدرسية الخارجية، المطبوعات والتصوير، الأدوات المكتبية، والهدايا",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

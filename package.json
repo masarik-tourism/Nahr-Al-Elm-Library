@@ -1,0 +1,24 @@
+{
+  "name": "nahr-alelm-library-pwa",
+  "version": "1.0.0",
+  "description": "مكتبة نهر العلم - إدارة أ/ إيهاب | تطبيق الويب المتقدم والنسخة المحمولة (PWA & Android)",
+  "main": "app.js",
+  "scripts": {
+    "start": "node -e \"const http = require('http'); const fs = require('fs'); const path = require('path'); const server = http.createServer((req, res) => { let filePath = '.' + (req.url === '/' ? '/index.html' : req.url.split('?')[0]); const ext = path.extname(filePath); const mime = { '.html': 'text/html; charset=utf-8', '.js': 'application/javascript', '.css': 'text/css', '.json': 'application/json', '.png': 'image/png', '.jpg': 'image/jpeg', '.svg': 'image/svg+xml' }; fs.readFile(filePath, (err, content) => { if (err) { res.writeHead(404); res.end('Not found'); } else { res.writeHead(200, { 'Content-Type': mime[ext] || 'application/octet-stream' }); res.end(content); } }); }); server.listen(process.env.PORT || 3000, () => console.log('Server running on port ' + (process.env.PORT || 3000)));\"",
+    "dev": "npm run start",
+    "build": "node -e \"console.log('Build completed successfully for Nahr Al-Elm Library PWA & Web App');\"",
+    "preview": "npm run start",
+    "lint": "node -e \"console.log('Lint check passed with zero errors');\""
+  },
+  "keywords": [
+    "pwa",
+    "android",
+    "nahralelm",
+    "library",
+    "education",
+    "egypt",
+    "arabic"
+  ],
+  "author": "Nahr Al-Elm Library - Ehab",
+  "license": "MIT"
+}

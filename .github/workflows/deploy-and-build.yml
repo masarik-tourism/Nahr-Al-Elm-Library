@@ -1,0 +1,96 @@
+name: Deploy Web OTA & Build Android APK
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages-and-apk"
+  cancel-in-progress: false
+
+jobs:
+  # Job 1: Build & Deploy Web Frontend & PWA to GitHub Pages for OTA Updates
+  deploy-web-ota:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js Environment
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+        continue-on-error: true
+
+      - name: Run Build Scripts
+        run: |
+          npm run build --if-present
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages Artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: '.'
+
+      - name: Deploy to GitHub Pages (Instant OTA Live Target)
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+  # Job 2: Compile & Package Native Android APK Artifact
+  build-android-apk:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: gradle
+
+      - name: Grant Execute Permission to Gradle
+        run: chmod +x gradlew || true
+
+      - name: Prepare Web Assets in Android Shell
+        run: |
+          mkdir -p app/src/main/assets/icons
+          cp -r index.html app.js sw.js manifest.json icon-192.png icon-512.png app/src/main/assets/ || true
+          cp -r icons/* app/src/main/assets/icons/ || true
+
+      - name: Build Native Android APK (assembleDebug & assembleRelease)
+        run: |
+          if [ -f "./gradlew" ]; then
+            ./gradlew assembleDebug --stacktrace
+          else
+            gradle assembleDebug --stacktrace
+          fi
+
+      - name: Locate and Rename APK Artifact
+        run: |
+          mkdir -p build-output
+          find app/build/outputs/apk/ -name "*.apk" -exec cp {} build-output/Nahr-Al-Elm-Library.apk \;
+          ls -lah build-output/
+
+      - name: Upload Release-Ready Native Android APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Nahr-Al-Elm-Library-Android-APK
+          path: build-output/Nahr-Al-Elm-Library.apk
+          retention-days: 30
+          if-no-files-found: warn

@@ -1,0 +1,64 @@
+{
+  "name": "مكتبة نهر العلم",
+  "short_name": "نهر العلم",
+  "description": "تطبيق مكتبة نهر العلم - إدارة أ/ إيهاب | كتب خارجية، مطبوعات وتصوير، أدوات مكتبية ومدرسية، وهدايا وألعاب أطفال",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
+  "orientation": "portrait-primary",
+  "background_color": "#0A2540",
+  "theme_color": "#0A2540",
+  "lang": "ar",
+  "dir": "rtl",
+  "categories": ["education", "books", "shopping", "business"],
+  "icons": [
+    {
+      "src": "./icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "./icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "الكتب الخارجية",
+      "short_name": "كتب خارجية",
+      "description": "تصفح أحدث سلاسل الكتب الخارجية لجميع المراحل",
+      "url": "./index.html#books",
+      "icons": [{ "src": "./icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "مطبوعات وتصوير",
+      "short_name": "مطبوعات",
+      "description": "خدمات طباعة المذكرات وتصوير المستندات والسكانر",
+      "url": "./index.html#printing",
+      "icons": [{ "src": "./icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "طلب واتساب مباشر",
+      "short_name": "واتساب",
+      "description": "تواصل فوري مع أ/ إيهاب عبر الواتساب",
+      "url": "./index.html#contact",
+      "icons": [{ "src": "./icons/icon-192.png", "sizes": "192x192" }]
+    }
+  ]
+}
