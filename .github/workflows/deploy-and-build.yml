@@ -5,6 +5,10 @@ on:
     branches:
       - main
       - master
+    tags:
+      - 'v*'
+  release:
+    types: [published, created]
   workflow_dispatch:
 
 permissions:
@@ -54,12 +58,12 @@ jobs:
           force_orphan: true
 
   # =========================================================================
-  # Job 2: Compile & Package Release-Ready Native Android APK Artifact
+  # Job 2: Compile Native Android APK & Publish to GitHub Releases
   # =========================================================================
   build-android-apk:
     runs-on: ubuntu-latest
     env:
-      GRADLE_OPTS: "-Djava.awt.headless=true -Dorg.gradle.daemon=false -Dorg.gradle.jvmargs=-Xmx2560m"
+      GRADLE_OPTS: "-Djava.awt.headless=true -Dorg.gradle.daemon=false -Dorg.gradle.jvmargs=-Xmx2048m -XX:MaxMetaspaceSize=512m"
     steps:
       - name: Checkout Source Code
         uses: actions/checkout@v4
@@ -75,9 +79,30 @@ jobs:
         with:
           gradle-version: '9.3.1'
 
-      - name: Accept Android SDK Licenses
+      - name: Configure Android SDK Permissions, Licenses & Platform 36
         run: |
-          yes | sudo "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses || true
+          echo "Setting Android SDK permissions..."
+          sudo chown -R $USER:$USER /usr/local/lib/android 2>/dev/null || true
+          sudo chown -R $USER:$USER "$ANDROID_HOME" 2>/dev/null || true
+
+          echo "Injecting Android SDK licenses..."
+          mkdir -p "$ANDROID_HOME/licenses"
+          cat << 'EOF' > "$ANDROID_HOME/licenses/android-sdk-license"
+          8933bad161af65ca73a1087504732095514b2482
+          d56f5187479451eabf01fb78ba6ed6ee3245d2d6
+          24333f8a63b6825ea9c5514f83c2829b004d1fee
+          EOF
+          cat << 'EOF' > "$ANDROID_HOME/licenses/android-sdk-preview-license"
+          84831b9409646a918e30573bab4c9c91346d8abd
+          EOF
+          cat << 'EOF' > "$ANDROID_HOME/licenses/google-gdk-license"
+          33b6a2b64607f11b759f320ef9dff4ae5c47d97a
+          EOF
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses || true
+
+          echo "Pre-installing Android 36 SDK Platform & Build-Tools..."
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-36.1" "platforms;android-36" "build-tools;36.0.0" "platform-tools" || true
+          ls -lah "$ANDROID_HOME/platforms" || true
 
       - name: Ensure Debug Keystore Exists
         run: |
@@ -92,8 +117,9 @@ jobs:
           fi
           ls -lah debug.keystore
 
-      - name: Ensure Valid Google Services Config
+      - name: Ensure Secrets and Config Files Exist
         run: |
+          touch .env
           if [ ! -f "app/google-services.json" ]; then
             cat << 'EOF' > app/google-services.json
           {
@@ -128,12 +154,10 @@ jobs:
           cp -rf icons/* app/src/main/assets/icons/ 2>/dev/null || true
           ls -lah app/src/main/assets/
 
-      - name: Grant Execute Permission to Gradle Wrapper
-        run: chmod +x gradlew
-
       - name: Compile Native Android APK (assembleDebug)
         run: |
-          ./gradlew assembleDebug --no-daemon --stacktrace
+          chmod +x gradlew
+          ./gradlew assembleDebug --stacktrace --no-daemon -Dorg.gradle.workers.max=2 || gradle assembleDebug --stacktrace --no-daemon -Dorg.gradle.workers.max=2
 
       - name: Locate and Package APK Artifact
         run: |
@@ -148,3 +172,21 @@ jobs:
           path: build-output/Nahr-Al-Elm-Library.apk
           retention-days: 30
           if-no-files-found: error
+
+      # Attach the compiled APK directly into GitHub Release (e.g., v1.0.0)
+      - name: Publish APK Asset to GitHub Release
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'release' || github.ref == 'refs/heads/main'
+        with:
+          files: build-output/Nahr-Al-Elm-Library.apk
+          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'v1.0.0' }}
+          name: "إصدار مكتبة نهر العلم - تطبيق الأندرويد ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'v1.0.0' }}"
+          body: |
+            ### 📱 تطبيق مكتبة نهر العلم - إدارة أ/ إيهاب (APK الأصلي)
+            - النسخة الرسمية الأولى للأندرويد جاهزة للتثبيت المباشر.
+            - يشمل كافة أقسام الكتب الخارجية، خدمات المطبوعات والتصوير، الأدوات المدرسية، وهدايا الأطفال.
+            - يدعم التحديث الهوائي التلقائي السريع (OTA).
+          draft: false
+          prerelease: false
+          token: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true

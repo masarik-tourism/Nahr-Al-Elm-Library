@@ -6,7 +6,7 @@
   <title>مكتبة نهر العلم - إدارة أ/ إيهاب</title>
   
   <!-- SEO & Native App Meta Information -->
-  <meta name="description" content="تطبيق مكتبة نهر العلم - إدارة أ/ إيهاب للكتب الخارجية، خدمات الطباعة والتصوير الفوري، الأدوات المدرسية والمكتبية، والهدايا وألعاب تنمية المهارات." />
+  <meta name="description" content="تطبيق مكتبة نهر العلم - إدارة أ/ إيهاب للكتب الخارجية المعتمدة، خدمات الطباعة والتصوير الفوري، الأدوات المدرسية والمكتبية، والهدايا وألعاب تنمية المهارات." />
   <meta name="theme-color" content="#0A2540" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -38,7 +38,8 @@
               accent: '#059669',
               mint: '#10B981',
               lightMint: '#D1FAE5',
-              gold: '#F59E0B'
+              gold: '#F59E0B',
+              darkGold: '#D97706'
             }
           },
           fontFamily: {
@@ -50,45 +51,96 @@
     }
   </script>
   
-  <!-- Font Awesome Icons -->
+  <!-- Font Awesome 6 Icons -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+
+  <!-- Firebase App & Realtime Database SDK (Compat v9) -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 
   <style>
     body {
       font-family: 'Cairo', system-ui, -apple-system, sans-serif;
       -webkit-tap-highlight-color: transparent;
-      user-select: none;
     }
     .custom-scroll::-webkit-scrollbar {
-      height: 4px;
-      width: 4px;
+      height: 5px;
+      width: 5px;
     }
     .custom-scroll::-webkit-scrollbar-thumb {
       background: #059669;
       border-radius: 9999px;
     }
-    .animate-spin-once {
-      animation: spin 0.6s ease-in-out;
+    .custom-scroll::-webkit-scrollbar-track {
+      background: #f1f5f9;
     }
-    @keyframes spin {
-      100% { transform: rotate(360deg); }
-    }
-    /* Native App touch ripple feedback */
+    /* Touch ripple feedback */
     .app-tap-effect:active {
       transform: scale(0.97);
       transition: transform 0.1s ease;
     }
+    /* Long press progress ring */
+    .long-press-active {
+      animation: pulseGlow 1s infinite alternate;
+    }
+    @keyframes pulseGlow {
+      from { box-shadow: 0 0 0px rgba(16, 185, 129, 0.2); }
+      to { box-shadow: 0 0 16px rgba(16, 185, 129, 0.7); }
+    }
+    /* Printable report styling */
+    @media print {
+      body * {
+        visibility: hidden;
+      }
+      #printableReportArea, #printableReportArea * {
+        visibility: visible;
+      }
+      #printableReportArea {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        margin: 0;
+        padding: 10px;
+        background: white !important;
+        color: black !important;
+      }
+      .no-print {
+        display: none !important;
+      }
+    }
   </style>
 </head>
-<body class="bg-slate-100 text-slate-800 antialiased selection:bg-brand-mint selection:text-white pb-28">
+<body class="bg-slate-100 text-slate-800 antialiased selection:bg-brand-mint selection:text-white pb-24">
 
   <!-- ========================================== -->
-  <!-- 1. Luxury Native App Top Bar (No URL Mockup) -->
+  <!-- 0. Dynamic Live Announcement Banner        -->
   <!-- ========================================== -->
-  <header class="sticky top-0 z-50 bg-brand-navy text-white shadow-lg border-b border-white/10 select-none">
+  <div id="liveAnnouncementBanner" class="bg-gradient-to-r from-amber-600 via-brand-darkGold to-emerald-700 text-white text-xs py-2 px-3 shadow-md border-b border-amber-300/30 flex items-center justify-between gap-2">
+    <div class="max-w-7xl mx-auto w-full flex items-center justify-between gap-3">
+      <div class="flex items-center gap-2 overflow-hidden">
+        <span id="announcementBadge" class="bg-white/20 text-amber-100 text-[10px] font-black px-2 py-0.5 rounded-full border border-white/20 shrink-0">
+          <i class="fa-solid fa-bullhorn text-[9px] mr-1"></i> تنويه عاجل
+        </span>
+        <span id="announcementText" class="truncate font-bold text-xs sm:text-sm">
+          أهلاً بكم في مكتبة نهر العلم - كافة الكتب الخارجية لجميع المراحل متوفرة بأسعار معتمدة ومحدثة لحظياً.
+        </span>
+      </div>
+      <div class="flex items-center gap-2 shrink-0">
+        <button id="dismissBannerBtn" title="إخفاء الإعلان" class="text-white/80 hover:text-white p-1 rounded hover:bg-white/10 text-xs">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- 1. Luxury Native App Top Bar               -->
+  <!-- ========================================== -->
+  <header class="sticky top-0 z-40 bg-brand-navy text-white shadow-lg border-b border-white/10 select-none">
     <div class="max-w-7xl mx-auto px-3.5 py-2.5 flex items-center justify-between gap-3">
       
-      <!-- App Brand Logo & Identity (Native Style) -->
+      <!-- Brand Logo & Identity -->
       <div class="flex items-center gap-2.5">
         <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-500 p-0.5 shadow-md flex items-center justify-center shrink-0">
           <img src="./icons/icon-192.png" alt="مكتبة نهر العلم" class="w-full h-full object-cover rounded-[10px]" onerror="this.onerror=null; this.src='./icon-192.png';" />
@@ -108,262 +160,796 @@
         </div>
       </div>
 
-      <!-- App Header Quick Actions (Native Icons) -->
+      <!-- Quick Actions (Live Sync, Print, Cart) -->
       <div class="flex items-center gap-1.5 sm:gap-2">
         
-        <!-- Live Status Indicator -->
-        <span id="connectionBadge" class="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-white/10 text-emerald-300 border border-white/10">
+        <!-- Firebase / Sync Status Pill -->
+        <span id="firebaseStatusBadge" class="hidden sm:inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-white/10 text-emerald-300 border border-white/10">
           <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-          <span>خدمة فورية</span>
+          <span id="syncStatusText">أسعار لحظية</span>
         </span>
 
-        <!-- Fast OTA Refresh Button -->
-        <button id="navRefreshBtn" title="تحديث المحتوى وفحص OTA" class="w-9 h-9 flex items-center justify-center rounded-xl bg-white/10 hover:bg-white/20 active:scale-95 transition-all text-brand-mint text-sm">
+        <!-- Open Print Utility Modal Button -->
+        <button id="openPrintModalBtn" title="اطبع مذكرتك" class="flex items-center gap-1.5 bg-sky-600/90 hover:bg-sky-600 active:scale-95 text-white font-bold text-xs py-1.5 px-3 rounded-xl shadow-md border border-sky-400/40 transition-all">
+          <i class="fa-solid fa-print text-xs"></i>
+          <span class="hidden sm:inline">اطبع مذكرتك</span>
+        </button>
+
+        <!-- Smart Cart Trigger Button -->
+        <button id="openCartBtn" title="سلة الطلبات الذكية" class="relative flex items-center gap-1.5 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 active:scale-95 text-white font-bold text-xs py-1.5 px-3 rounded-xl shadow-lg border border-emerald-300/40 transition-all">
+          <i class="fa-solid fa-cart-shopping text-xs"></i>
+          <span class="hidden sm:inline">سلة الطلبات</span>
+          <span id="cartCountBadge" class="bg-amber-400 text-slate-900 text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center -mr-1">
+            0
+          </span>
+        </button>
+
+        <!-- Fast Refresh & OTA Check -->
+        <button id="navRefreshBtn" title="تحديث الأسعار وفحص البيانات" class="w-9 h-9 flex items-center justify-center rounded-xl bg-white/10 hover:bg-white/20 active:scale-95 transition-all text-brand-mint text-sm">
           <i class="fa-solid fa-arrows-rotate" id="refreshIcon"></i>
         </button>
 
-        <!-- Share Button -->
-        <button id="navShareBtn" title="مشاركة التطبيق" class="w-9 h-9 flex items-center justify-center rounded-xl bg-white/10 hover:bg-white/20 active:scale-95 transition-all text-white text-sm">
-          <i class="fa-solid fa-share-nodes"></i>
-        </button>
-
-        <!-- Conditional PWA Install Button (Strictly shown ONLY in mobile browsers, hidden in APK) -->
-        <div id="installBtnContainer" class="hidden">
-          <button id="installAppBtn" class="flex items-center gap-1.5 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 active:scale-95 text-white font-bold text-xs py-1.5 px-3 rounded-xl shadow-lg transition-all border border-emerald-300/40">
-            <i class="fa-solid fa-download text-xs"></i>
-            <span>تثبيت</span>
-          </button>
-        </div>
-
       </div>
 
-    </div>
-
-    <!-- OTA Update Notification Toast -->
-    <div id="otaBanner" class="hidden bg-gradient-to-r from-emerald-600 to-teal-700 text-white text-xs py-1.5 px-4 text-center font-bold flex items-center justify-center gap-2 shadow-inner">
-      <i class="fa-solid fa-cloud-arrow-down animate-bounce"></i>
-      <span id="otaBannerText">تم تحديث بيانات مكتبة نهر العلم بنجاح عبر الهواء (OTA)!</span>
-      <button id="otaReloadBtn" class="underline text-amber-200 hover:text-white mr-2">تطبيق الآن</button>
     </div>
   </header>
 
   <!-- ========================================== -->
-  <!-- 2. App Highlights / Quick Stories Carousel -->
+  <!-- 2. Main Public Storefront Screen           -->
   <!-- ========================================== -->
-  <section class="bg-brand-navy/95 border-b border-white/10 py-3 px-3 text-white overflow-x-auto custom-scroll">
-    <div class="max-w-7xl mx-auto flex items-center gap-3 min-w-max">
-      
-      <!-- Story 1: Educational Books -->
-      <button class="story-chip flex items-center gap-2 bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-full text-xs font-bold transition-all border border-white/10" data-cat="books">
-        <span class="w-6 h-6 rounded-full bg-emerald-500/30 text-emerald-300 flex items-center justify-center text-xs">
-          <i class="fa-solid fa-book"></i>
-        </span>
-        <span>الكتب الخارجية المعتمدة</span>
-      </button>
+  <main id="publicStorefront" class="space-y-4">
 
-      <!-- Story 2: Instant Print -->
-      <button id="storyPrintBtn" class="story-chip flex items-center gap-2 bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-full text-xs font-bold transition-all border border-white/10" data-cat="printing">
-        <span class="w-6 h-6 rounded-full bg-sky-500/30 text-sky-300 flex items-center justify-center text-xs">
-          <i class="fa-solid fa-print"></i>
-        </span>
-        <span>طباعة وتصوير فوري</span>
-      </button>
-
-      <!-- Story 3: Stationery -->
-      <button class="story-chip flex items-center gap-2 bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-full text-xs font-bold transition-all border border-white/10" data-cat="stationery">
-        <span class="w-6 h-6 rounded-full bg-amber-500/30 text-amber-300 flex items-center justify-center text-xs">
-          <i class="fa-solid fa-pen-ruler"></i>
-        </span>
-        <span>كشاكيل وأدوات راقية</span>
-      </button>
-
-      <!-- Story 4: Intelligence Toys -->
-      <button class="story-chip flex items-center gap-2 bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-full text-xs font-bold transition-all border border-white/10" data-cat="gifts">
-        <span class="w-6 h-6 rounded-full bg-pink-500/30 text-pink-300 flex items-center justify-center text-xs">
-          <i class="fa-solid fa-puzzle-piece"></i>
-        </span>
-        <span>ألعاب ذكاء وهدايا</span>
-      </button>
-
-      <!-- Story 5: Direct Hotline -->
-      <a href="tel:01002968331" class="flex items-center gap-2 bg-emerald-500/20 text-emerald-300 px-3 py-1.5 rounded-full text-xs font-bold transition-all border border-emerald-500/30">
-        <i class="fa-solid fa-phone text-xs"></i>
-        <span dir="ltr">01002968331</span>
-      </a>
-
-    </div>
-  </section>
-
-  <!-- ========================================== -->
-  <!-- 3. In-App Promotional Banner & Instant Search -->
-  <!-- ========================================== -->
-  <section class="max-w-7xl mx-auto px-3.5 pt-4">
-    <!-- Promotional App Banner -->
-    <div class="relative bg-gradient-to-r from-brand-deepBlue via-slate-900 to-brand-navy rounded-2xl p-4 sm:p-5 text-white shadow-md border border-white/10 overflow-hidden mb-3">
-      <div class="flex items-center justify-between gap-3 relative z-10">
-        <div class="space-y-1">
-          <div class="inline-flex items-center gap-1.5 text-[11px] font-bold text-amber-300 bg-white/10 px-2.5 py-0.5 rounded-md">
-            <i class="fa-solid fa-bolt text-amber-400"></i>
-            <span>خدمة مذكرات وكتب سريعة</span>
+    <!-- Promotional App Hero Banner -->
+    <section class="max-w-7xl mx-auto px-3.5 pt-3">
+      <div class="relative bg-gradient-to-r from-brand-deepBlue via-slate-900 to-brand-navy rounded-2xl p-4 sm:p-5 text-white shadow-md border border-white/10 overflow-hidden">
+        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 relative z-10">
+          <div class="space-y-1">
+            <div class="inline-flex items-center gap-1.5 text-[11px] font-bold text-amber-300 bg-white/10 px-2.5 py-0.5 rounded-md">
+              <i class="fa-solid fa-bolt text-amber-400"></i>
+              <span>تحديث سحابي مباشر للأسعار والكتب</span>
+            </div>
+            <h2 class="text-base sm:text-xl font-black text-white font-tajawal">
+              صرح العلم والتفوق الدراسي لجميع المراحل التعليمية
+            </h2>
+            <p class="text-xs text-slate-300 max-w-xl">
+              اختر المرحلة والصف والمادة لإظهار أسعار الكتب المعتمدة فوراً، أو أضف الكتب لسلتك وأرسل طلبك بضغطة زر واحدة عبر الواتساب.
+            </p>
           </div>
-          <h2 class="text-base sm:text-xl font-black text-white font-tajawal">
-            صرح العلم والتفوق الدراسي لجميع المراحل
-          </h2>
-          <p class="text-xs text-slate-300 max-w-lg">
-            اطلب كافة الكتب الخارجية لجميع المراحل، أو أرسل مذكراتك عبر الواتساب واستلمها جاهزة ومغلفة.
-          </p>
-        </div>
-        <button id="quickSendPdfBtn" class="shrink-0 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold text-xs sm:text-sm py-2 px-3.5 rounded-xl shadow-md transition-all flex items-center gap-1.5">
-          <i class="fa-brands fa-whatsapp text-sm"></i>
-          <span>اطبع مذكرتك</span>
-        </button>
-      </div>
-    </div>
-
-    <!-- Instant Search Bar (Native App Style) -->
-    <div class="bg-white rounded-2xl shadow-sm border border-slate-200/90 p-2.5">
-      <div class="relative">
-        <span class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400 text-sm">
-          <i class="fa-solid fa-magnifying-glass"></i>
-        </span>
-        <input 
-          type="text" 
-          id="searchInput" 
-          placeholder="ابحث في كافة الكتب الخارجية، الطباعة، الأدوات المدرسية، أو الهدايا..." 
-          class="w-full pr-9 pl-9 py-2.5 text-xs sm:text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all text-slate-800 font-medium"
-        />
-        <button id="clearSearchBtn" class="hidden absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 hover:text-slate-600">
-          <i class="fa-solid fa-xmark"></i>
-        </button>
-      </div>
-
-      <!-- Category Filter Pills (Native Segmented Style) -->
-      <div class="flex items-center gap-1.5 overflow-x-auto pt-2.5 custom-scroll select-none">
-        <button 
-          data-category="books" 
-          class="category-tab active flex items-center gap-1.5 px-3 py-2 rounded-xl font-bold text-xs whitespace-nowrap transition-all bg-brand-navy text-white shadow-sm">
-          <i class="fa-solid fa-book-open text-xs"></i>
-          <span>كتب خارجية</span>
-          <span class="category-count text-[10px] bg-white/20 px-1.5 py-0.2 rounded-full"></span>
-        </button>
-
-        <button 
-          data-category="printing" 
-          class="category-tab flex items-center gap-1.5 px-3 py-2 rounded-xl font-bold text-xs whitespace-nowrap transition-all bg-slate-100 hover:bg-slate-200 text-slate-700">
-          <i class="fa-solid fa-print text-xs"></i>
-          <span>مطبوعات وتصوير</span>
-          <span class="category-count text-[10px] bg-slate-200 px-1.5 py-0.2 rounded-full"></span>
-        </button>
-
-        <button 
-          data-category="stationery" 
-          class="category-tab flex items-center gap-1.5 px-3 py-2 rounded-xl font-bold text-xs whitespace-nowrap transition-all bg-slate-100 hover:bg-slate-200 text-slate-700">
-          <i class="fa-solid fa-pen-ruler text-xs"></i>
-          <span>أدوات مكتبية ومدرسية</span>
-          <span class="category-count text-[10px] bg-slate-200 px-1.5 py-0.2 rounded-full"></span>
-        </button>
-
-        <button 
-          data-category="gifts" 
-          class="category-tab flex items-center gap-1.5 px-3 py-2 rounded-xl font-bold text-xs whitespace-nowrap transition-all bg-slate-100 hover:bg-slate-200 text-slate-700">
-          <i class="fa-solid fa-gifts text-xs"></i>
-          <span>هدايا ولعب أطفال</span>
-          <span class="category-count text-[10px] bg-slate-200 px-1.5 py-0.2 rounded-full"></span>
-        </button>
-      </div>
-
-      <!-- Dynamic Grade & Sub-type Chips -->
-      <div id="subFilterContainer" class="flex flex-wrap items-center gap-1 mt-2.5 pt-2 border-t border-slate-100 text-xs">
-        <!-- Rendered dynamically via JavaScript -->
-      </div>
-    </div>
-  </section>
-
-  <!-- ========================================== -->
-  <!-- 4. Dynamic Responsive Product & Services Grid -->
-  <!-- ========================================== -->
-  <main class="max-w-7xl mx-auto px-3.5 pt-4">
-    
-    <!-- Section Header -->
-    <div class="flex items-center justify-between mb-3 px-1">
-      <div>
-        <h2 id="currentCategoryTitle" class="text-base sm:text-lg font-black text-slate-900 font-tajawal">
-          الكتب الخارجية لجميع المراحل
-        </h2>
-        <p id="currentCategoryDesc" class="text-[11px] sm:text-xs text-slate-500 font-medium">
-          أقوى سلاسل الشرح والمراجعة وبنوك الأسئلة المعتمدة للمناهج الدراسية
-        </p>
-      </div>
-      <span class="text-[11px] font-bold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-100 shrink-0">
-        طلب فوري
-      </span>
-    </div>
-
-    <!-- Product Grid -->
-    <div id="itemsGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3.5 sm:gap-5">
-      <!-- Injected dynamically via app.js -->
-    </div>
-
-    <!-- Empty State Container -->
-    <div id="emptyState" class="hidden text-center py-12 px-4 bg-white rounded-2xl border border-slate-200 shadow-sm mt-3">
-      <div class="w-14 h-14 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center mx-auto mb-2.5 text-xl">
-        <i class="fa-solid fa-magnifying-glass"></i>
-      </div>
-      <h3 class="text-sm sm:text-base font-bold text-slate-800 mb-1">لم نتمكن من العثور على نتائج</h3>
-      <p class="text-xs text-slate-500 max-w-md mx-auto mb-3">
-        تواصل مباشرة مع أ/ إيهاب عبر الواتساب للاستفسار عن توفر طلبك فوراً بالمكتبة.
-      </p>
-      <button id="emptyStateWhatsappBtn" class="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-4 py-2 rounded-xl shadow-md transition-all">
-        <i class="fa-brands fa-whatsapp text-sm"></i>
-        <span>استفسر عبر الواتساب (01002968331)</span>
-      </button>
-    </div>
-
-    <!-- Store Info & Working Hours Card -->
-    <section class="mt-6 bg-white rounded-2xl p-4 border border-slate-200/80 shadow-sm text-slate-700">
-      <div class="flex flex-col sm:flex-row items-center justify-between gap-3">
-        <div class="flex items-center gap-3">
-          <div class="w-10 h-10 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center text-lg shrink-0">
-            <i class="fa-solid fa-shop"></i>
+          <div class="flex items-center gap-2 shrink-0">
+            <button id="heroPrintBtn" class="bg-sky-600 hover:bg-sky-700 text-white font-bold text-xs py-2 px-3 rounded-xl shadow-md transition-all flex items-center gap-1.5">
+              <i class="fa-solid fa-file-pdf"></i>
+              <span>طباعة مذكرة</span>
+            </button>
+            <a href="https://wa.me/201002968331?text=%D9%85%D8%B1%D8%AD%D8%A8%D8%A7%D9%8B%20%D9%85%D9%83%D8%AA%D8%A8%D8%A9%20%D9%86%D9%87%D8%B1%20%D8%A7%D9%84%D8%B9%D9%84%D9%85%20(%D8%A5%D8%AF%D8%A7%D8%B1%D8%A9%20%D8%A3/%20%D8%A5%D9%8A%D9%87%D8%A7%D8%A8)%D8%8C%20%D8%A3%D9%88%D8%AF%20%D8%A7%D9%84%D8%A7%D8%B3%D8%AA%D9%81%D8%B3%D8%A7%D8%B1%20%D8%B9%D9%86%20%D8%AA%D9%88%D9%81%D8%B1%20%D8%A7%D9%84%D9%83%D8%AA%D8%A8." 
+               target="_blank" 
+               rel="noopener"
+               class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-2 px-3 rounded-xl shadow-md transition-all flex items-center gap-1.5">
+              <i class="fa-brands fa-whatsapp text-sm"></i>
+              <span>استفسار مباشر</span>
+            </a>
           </div>
-          <div>
-            <h4 class="font-bold text-xs sm:text-sm text-slate-900">مكتبة نهر العلم - إدارة أ/ إيهاب</h4>
-            <p class="text-[11px] text-slate-500">نرحب بكم يومياً لخدمة كافة المراحل التعليمية وأولياء الأمور</p>
-          </div>
-        </div>
-        <div class="flex items-center gap-2 text-xs font-bold text-slate-600 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-200">
-          <i class="fa-regular fa-clock text-emerald-600"></i>
-          <span>مواعيد العمل: يومياً من 8 صباحاً حتى 11 مساءً</span>
         </div>
       </div>
     </section>
 
+    <!-- ========================================== -->
+    <!-- 3. Enhanced Educational Search & Filters   -->
+    <!-- ========================================== -->
+    <section class="max-w-7xl mx-auto px-3.5">
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-200/90 p-4">
+        
+        <div class="flex items-center justify-between pb-3 border-b border-slate-100 mb-3">
+          <div class="flex items-center gap-2 text-slate-800 font-black text-sm">
+            <i class="fa-solid fa-filter text-emerald-600"></i>
+            <span>تصفية الكتب حسب المرحلة والصف والمادة</span>
+          </div>
+          <button id="resetFiltersBtn" class="text-xs text-rose-600 hover:text-rose-700 font-bold flex items-center gap-1">
+            <i class="fa-solid fa-arrow-rotate-left text-[11px]"></i>
+            <span>إعادة ضبط الفلاتر</span>
+          </button>
+        </div>
+
+        <!-- 3-Tier Cascading Dropdown Selectors -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          
+          <!-- Dropdown 1: Educational Stage (المرحلة التعليمية) -->
+          <div>
+            <label for="stageSelect" class="block text-xs font-bold text-slate-700 mb-1">
+              المرحلة التعليمية:
+            </label>
+            <div class="relative">
+              <select id="stageSelect" class="w-full text-xs sm:text-sm font-semibold bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 appearance-none focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white text-slate-800">
+                <option value="all">كافة المراحل التعليمية</option>
+                <option value="ابتدائي">المرحلة الابتدائية (من الأول إلى السادس)</option>
+                <option value="إعدادي">المرحلة الإعدادية (من الأول إلى الثالث)</option>
+                <option value="ثانوي">المرحلة الثانوية (من الأول إلى الثالث)</option>
+                <option value="أخرى">خدمات الطباعة، الأدوات المكتبية والهدايا</option>
+              </select>
+              <div class="pointer-events-none absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
+                <i class="fa-solid fa-chevron-down text-xs"></i>
+              </div>
+            </div>
+          </div>
+
+          <!-- Dropdown 2: Grade/Class (الصف الدراسي) -->
+          <div>
+            <label for="gradeSelect" class="block text-xs font-bold text-slate-700 mb-1">
+              الصف الدراسي:
+            </label>
+            <div class="relative">
+              <select id="gradeSelect" class="w-full text-xs sm:text-sm font-semibold bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 appearance-none focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white text-slate-800">
+                <option value="all">كافة الصفوف الدراسية</option>
+                <!-- Dynamically populated via JavaScript -->
+              </select>
+              <div class="pointer-events-none absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
+                <i class="fa-solid fa-chevron-down text-xs"></i>
+              </div>
+            </div>
+          </div>
+
+          <!-- Dropdown 3: Subject (المادة الدراسية) -->
+          <div>
+            <label for="subjectSelect" class="block text-xs font-bold text-slate-700 mb-1">
+              المادة الدراسية:
+            </label>
+            <div class="relative">
+              <select id="subjectSelect" class="w-full text-xs sm:text-sm font-semibold bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 appearance-none focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white text-slate-800">
+                <option value="all">كافة المواد الدراسية</option>
+                <!-- Dynamically populated via JavaScript -->
+              </select>
+              <div class="pointer-events-none absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
+                <i class="fa-solid fa-chevron-down text-xs"></i>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Secondary Quick Search & Filter Status -->
+        <div class="mt-3 pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2">
+          <div class="flex items-center gap-1.5 overflow-x-auto custom-scroll py-1">
+            <span class="text-[11px] font-bold text-slate-500 shrink-0">سلاسل الكتب:</span>
+            <button data-series="all" class="series-tag active text-[11px] font-bold px-2.5 py-1 rounded-lg bg-brand-navy text-white transition-all">الكل</button>
+            <button data-series="سلاح التلميذ" class="series-tag text-[11px] font-bold px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 transition-all">سلاح التلميذ</button>
+            <button data-series="المعاصر" class="series-tag text-[11px] font-bold px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 transition-all">المعاصر</button>
+            <button data-series="الامتحان" class="series-tag text-[11px] font-bold px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 transition-all">الامتحان</button>
+            <button data-series="الأضواء" class="series-tag text-[11px] font-bold px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 transition-all">الأضواء</button>
+            <button data-series="نيوتن" class="series-tag text-[11px] font-bold px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 transition-all">نيوتن</button>
+            <button data-series="الوافي" class="series-tag text-[11px] font-bold px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 transition-all">الوافي</button>
+          </div>
+          <div class="text-[11px] font-bold text-slate-500">
+            تم العثور على <span id="filteredItemsCount" class="text-emerald-600 font-black">0</span> كتاب ومادة
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- 4. Books and Items Catalog Grid            -->
+    <!-- ========================================== -->
+    <section class="max-w-7xl mx-auto px-3.5">
+      <div id="catalogGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3.5">
+        <!-- Rendered dynamically by JavaScript -->
+      </div>
+
+      <!-- No items found state -->
+      <div id="noResultsNotice" class="hidden bg-white rounded-2xl p-8 text-center border border-slate-200 shadow-sm mt-4">
+        <div class="w-16 h-16 bg-amber-50 text-amber-500 rounded-full flex items-center justify-center mx-auto mb-3 text-2xl">
+          <i class="fa-solid fa-book-open-reader"></i>
+        </div>
+        <h3 class="text-base font-bold text-slate-800 mb-1">لم نجد كتباً مطابقة لهذه الفلاتر</h3>
+        <p class="text-xs text-slate-500 mb-4 max-w-sm mx-auto">
+          جرب تغيير المرحلة أو الصف الدراسي أو المادة، أو تواصل معنا مباشرة لتوفير أي كتاب مدرسي تريده فوراً.
+        </p>
+        <button id="resetFromNoticeBtn" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-2 px-4 rounded-xl shadow-md transition-all">
+          إظهار كافة الكتب
+        </button>
+      </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- 5. Store Information & Working Hours Card  -->
+    <!-- ========================================== -->
+    <section class="max-w-7xl mx-auto px-3.5 pt-2">
+      <div class="bg-white rounded-2xl p-4 border border-slate-200/90 shadow-sm">
+        <div class="flex flex-col md:flex-row items-center justify-between gap-3">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center text-lg shrink-0">
+              <i class="fa-solid fa-shop"></i>
+            </div>
+            <div>
+              <h4 class="font-bold text-xs sm:text-sm text-slate-900">مكتبة نهر العلم - إدارة أ/ إيهاب</h4>
+              <p class="text-[11px] text-slate-500">العنوان والخدمات: كتب خارجية معتمدة، مذكرات، طباعة ليزر، وأدوات مكتبية ومدرسية متكاملة</p>
+            </div>
+          </div>
+          <div class="flex flex-wrap items-center gap-2">
+            <a href="tel:01002968331" class="flex items-center gap-1.5 text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-3 py-1.5 rounded-xl border border-emerald-200 transition-all">
+              <i class="fa-solid fa-phone"></i>
+              <span dir="ltr">01002968331</span>
+            </a>
+            <a href="tel:01157706887" class="flex items-center gap-1.5 text-xs font-bold text-sky-700 bg-sky-50 hover:bg-sky-100 px-3 py-1.5 rounded-xl border border-sky-200 transition-all">
+              <i class="fa-solid fa-mobile-screen"></i>
+              <span dir="ltr">01157706887</span>
+            </a>
+            <div class="flex items-center gap-1.5 text-xs font-bold text-slate-600 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-200">
+              <i class="fa-regular fa-clock text-emerald-600"></i>
+              <span>يومياً من 8:00 ص حتى 11:00 م</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- 6. Hidden Admin Trigger Footer Area        -->
+    <!-- ========================================== -->
+    <footer class="max-w-7xl mx-auto px-3.5 py-6 text-center select-none">
+      <div class="inline-block relative">
+        <!-- Target string for 3-second long press -->
+        <p id="adminTriggerFooter" 
+           class="text-xs sm:text-sm font-black text-slate-500 hover:text-slate-800 cursor-pointer transition-all duration-300 px-4 py-2 rounded-xl border border-dashed border-transparent hover:border-slate-300/80 active:bg-slate-200/50"
+           title="اضغط مطولاً لمدة 3 ثوانٍ">
+          Nahr Al-Elm Library - Admin by A/ Ehab
+        </p>
+        <!-- Subtle Long-Press Visual Progress Indicator -->
+        <div id="longPressIndicator" class="hidden absolute -bottom-1 inset-x-4 h-1 bg-slate-200 rounded-full overflow-hidden">
+          <div id="longPressBar" class="h-full bg-emerald-500 w-0 transition-all duration-75 ease-linear"></div>
+        </div>
+      </div>
+      <p class="text-[10px] text-slate-400 mt-1">
+        جميع الحقوق محفوظة © لمكتبة نهر العلم
+      </p>
+    </footer>
+
   </main>
 
   <!-- ========================================== -->
-  <!-- 5. Luxury Native App Bottom Navigation Bar -->
+  <!-- 7. Full-Featured Single-Page Admin Panel   -->
+  <!-- ========================================== -->
+  <section id="adminPanelScreen" class="hidden min-h-screen bg-slate-900 text-slate-100 p-3 sm:p-6 pb-24">
+    <div class="max-w-7xl mx-auto space-y-5">
+      
+      <!-- Top Admin Header Bar -->
+      <div class="bg-slate-800/90 rounded-2xl p-4 sm:p-5 border border-slate-700 shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div class="space-y-1">
+          <div class="flex items-center gap-2">
+            <span class="bg-emerald-500/20 text-emerald-300 text-xs font-bold px-2.5 py-0.5 rounded-full border border-emerald-500/30">
+              <i class="fa-solid fa-shield-halved mr-1"></i> لوحة الإدارة السحابية
+            </span>
+            <span id="adminSessionProfileBadge" class="bg-amber-500/20 text-amber-300 text-xs font-bold px-2.5 py-0.5 rounded-full border border-amber-500/30">
+              Engineer Mohamed Youssef
+            </span>
+          </div>
+          <h2 class="text-lg sm:text-2xl font-black text-white font-tajawal">
+            إدارة مكتبة نهر العلم - أ/ إيهاب
+          </h2>
+          <p class="text-xs text-slate-400">
+            تعديل الأسعار لحظياً، نشر الإعلانات، توليد كشوفات الأسعار، ومراقبة إحصائيات المتجر.
+          </p>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2 self-end md:self-center">
+          <button id="adminGeneratePdfBtn" class="flex items-center gap-1.5 bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs py-2 px-3.5 rounded-xl shadow-md transition-all">
+            <i class="fa-solid fa-file-invoice text-sm"></i>
+            <span>بيان فوري بالأسعار</span>
+          </button>
+          <button id="adminBackToStoreBtn" class="flex items-center gap-1.5 bg-slate-700 hover:bg-slate-600 text-slate-200 font-bold text-xs py-2 px-3.5 rounded-xl transition-all">
+            <i class="fa-solid fa-eye text-sm"></i>
+            <span>معاينة المتجر</span>
+          </button>
+          <button id="adminLogoutBtn" class="flex items-center gap-1.5 bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs py-2 px-3.5 rounded-xl shadow-md transition-all">
+            <i class="fa-solid fa-right-from-bracket text-sm"></i>
+            <span>تسجيل الخروج</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Admin Metrics & Analytics Summary Cards -->
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
+        
+        <div class="bg-slate-800 rounded-2xl p-4 border border-slate-700 shadow-md">
+          <div class="flex items-center justify-between text-slate-400 mb-2">
+            <span class="text-xs font-bold">إجمالي الكتب المسجلة</span>
+            <i class="fa-solid fa-book text-emerald-400"></i>
+          </div>
+          <div class="text-2xl font-black text-white" id="statTotalBooks">0</div>
+          <p class="text-[10px] text-emerald-400 mt-1 font-semibold">جاهزة للعرض والطلب</p>
+        </div>
+
+        <div class="bg-slate-800 rounded-2xl p-4 border border-slate-700 shadow-md">
+          <div class="flex items-center justify-between text-slate-400 mb-2">
+            <span class="text-xs font-bold">حالة الإعلانات</span>
+            <i class="fa-solid fa-bullhorn text-amber-400"></i>
+          </div>
+          <div class="text-2xl font-black text-white" id="statActiveBanners">1</div>
+          <p class="text-[10px] text-amber-400 mt-1 font-semibold">شريط علوي نشط للعملاء</p>
+        </div>
+
+        <div class="bg-slate-800 rounded-2xl p-4 border border-slate-700 shadow-md">
+          <div class="flex items-center justify-between text-slate-400 mb-2">
+            <span class="text-xs font-bold">حالة الاتصال السحابي</span>
+            <i class="fa-solid fa-cloud text-sky-400"></i>
+          </div>
+          <div class="text-sm font-black text-white truncate" id="statFirebaseStatus">Firebase Ready</div>
+          <p class="text-[10px] text-sky-400 mt-1 font-semibold">Realtime Sync Active</p>
+        </div>
+
+        <div class="bg-slate-800 rounded-2xl p-4 border border-slate-700 shadow-md">
+          <div class="flex items-center justify-between text-slate-400 mb-2">
+            <span class="text-xs font-bold">الكتب الأكثر طلباً</span>
+            <i class="fa-solid fa-fire text-rose-400"></i>
+          </div>
+          <div class="text-sm font-black text-white truncate" id="statTopBook">المعاصر / الامتحان</div>
+          <p class="text-[10px] text-rose-400 mt-1 font-semibold">سلاسل الأكثر رواجاً</p>
+        </div>
+
+      </div>
+
+      <!-- Admin Sub-Navigation Tabs -->
+      <div class="flex items-center gap-2 border-b border-slate-700 pb-2 overflow-x-auto custom-scroll">
+        <button data-admin-tab="prices" class="admin-tab-btn active bg-emerald-600 text-white text-xs font-bold px-4 py-2 rounded-xl transition-all flex items-center gap-1.5">
+          <i class="fa-solid fa-tags"></i>
+          <span>إدارة أسعار الكتب والمواد</span>
+        </button>
+        <button data-admin-tab="printingRates" class="admin-tab-btn bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold px-4 py-2 rounded-xl transition-all flex items-center gap-1.5">
+          <i class="fa-solid fa-print"></i>
+          <span>تعريفة خدمات الطباعة والتجليد</span>
+        </button>
+        <button data-admin-tab="announcement" class="admin-tab-btn bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold px-4 py-2 rounded-xl transition-all flex items-center gap-1.5">
+          <i class="fa-solid fa-bullhorn"></i>
+          <span>شريط الإعلانات والأخبار</span>
+        </button>
+      </div>
+
+      <!-- Tab Content 1: Live Pricing Grid (Books & Catalog) -->
+      <div id="adminTabPrices" class="space-y-4">
+        
+        <div class="bg-slate-800 rounded-2xl p-4 border border-slate-700 shadow-lg flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+          <div class="relative flex-1">
+            <input type="text" id="adminTableSearch" placeholder="ابحث في جدول الأسعار بالاسم أو المادة أو الصف..." class="w-full text-xs sm:text-sm bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+          </div>
+          <div class="flex items-center gap-2">
+            <button id="adminAddNewBookBtn" class="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs py-2 px-3 rounded-xl transition-all">
+              <i class="fa-solid fa-plus"></i>
+              <span>إضافة كتاب جديد</span>
+            </button>
+            <button id="adminSaveAllPricesBtn" class="flex items-center gap-1.5 bg-brand-gold hover:bg-amber-600 text-slate-950 font-black text-xs py-2 px-3 rounded-xl shadow-md transition-all">
+              <i class="fa-solid fa-cloud-arrow-up"></i>
+              <span>مزامنة كافة التعديلات</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Table Container -->
+        <div class="bg-slate-800 rounded-2xl border border-slate-700 overflow-hidden shadow-xl">
+          <div class="overflow-x-auto custom-scroll">
+            <table class="w-full text-right text-xs">
+              <thead class="bg-slate-900/90 text-slate-400 font-bold border-b border-slate-700">
+                <tr>
+                  <th class="p-3">اسم الكتاب / المنتج</th>
+                  <th class="p-3">المرحلة</th>
+                  <th class="p-3">الصف الدراسي</th>
+                  <th class="p-3">المادة / السلسلة</th>
+                  <th class="p-3">السعر الحالي (ج.م)</th>
+                  <th class="p-3">حالة التوفر</th>
+                  <th class="p-3 text-center">إجراءات</th>
+                </tr>
+              </thead>
+              <tbody id="adminPricesTableBody" class="divide-y divide-slate-700/60 font-medium">
+                <!-- Dynamically rendered rows with inline price editors -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Tab Content 2: Printing Rates Configuration -->
+      <div id="adminTabPrintingRates" class="hidden space-y-4">
+        <div class="bg-slate-800 rounded-2xl p-5 border border-slate-700 shadow-lg max-w-2xl">
+          <h3 class="text-base font-black text-white font-tajawal mb-2 flex items-center gap-2">
+            <i class="fa-solid fa-calculator text-sky-400"></i>
+            <span>تعديل تسعيرة طباعة المذكرات والتغليف</span>
+          </h3>
+          <p class="text-xs text-slate-400 mb-4">
+            الأسعار التي تحددها هنا تنعكس فورياً في حاسبة "اطبع مذكرتك" للمستخدمين وللطلبات الواردة عبر الواتساب.
+          </p>
+
+          <form id="printingRatesForm" class="space-y-3">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label class="block text-xs font-bold text-slate-300 mb-1">سعر الصفحة أبيض وأسود (ج.م):</label>
+                <input type="number" step="0.05" id="rateBwPage" class="w-full text-xs bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white font-bold" />
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-slate-300 mb-1">سعر الصفحة ألوان (ج.م):</label>
+                <input type="number" step="0.10" id="rateColorPage" class="w-full text-xs bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white font-bold" />
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-slate-300 mb-1">تغليف تدبيس (ج.م):</label>
+                <input type="number" step="0.50" id="rateBindingStaple" class="w-full text-xs bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white font-bold" />
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-slate-300 mb-1">تغليف بلاستيك (كعب/حلزوني) (ج.م):</label>
+                <input type="number" step="1.0" id="rateBindingPlastic" class="w-full text-xs bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white font-bold" />
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-slate-300 mb-1">تغليف سلك حديد فاخر (ج.م):</label>
+                <input type="number" step="1.0" id="rateBindingWire" class="w-full text-xs bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white font-bold" />
+              </div>
+            </div>
+            <button type="submit" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs py-2 px-4 rounded-xl shadow-md transition-all flex items-center gap-1.5 mt-4">
+              <i class="fa-solid fa-floppy-disk"></i>
+              <span>حفظ تسعيرة الطباعة ونشرها سحابياً</span>
+            </button>
+          </form>
+        </div>
+      </div>
+
+      <!-- Tab Content 3: Announcement Creator Form -->
+      <div id="adminTabAnnouncement" class="hidden space-y-4">
+        <div class="bg-slate-800 rounded-2xl p-5 border border-slate-700 shadow-lg max-w-2xl">
+          <h3 class="text-base font-black text-white font-tajawal mb-2 flex items-center gap-2">
+            <i class="fa-solid fa-bullhorn text-amber-400"></i>
+            <span>إعداد وتحديث شريط الأخبار والإعلانات</span>
+          </h3>
+          <p class="text-xs text-slate-400 mb-4">
+            سيظهر هذا النص في الشريط العلوي لكافة زوار التطبيق فور حفظه.
+          </p>
+
+          <form id="announcementForm" class="space-y-3">
+            <div>
+              <label class="block text-xs font-bold text-slate-300 mb-1">نص الإعلان أو التنويه:</label>
+              <textarea id="adminAnnouncementInput" rows="3" class="w-full text-xs bg-slate-900 border border-slate-700 rounded-xl p-3 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500" placeholder="أدخل نص التنويه مثل: وصول كتب سلاح التلميذ للصف الرابع الابتدائي، أو عروض التصوير..."></textarea>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label class="block text-xs font-bold text-slate-300 mb-1">عنوان الشارة (Badge):</label>
+                <input type="text" id="adminBadgeInput" placeholder="تنويه، هام، عرض خاص..." class="w-full text-xs bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white" />
+              </div>
+              <div class="flex items-center gap-3 pt-6">
+                <input type="checkbox" id="adminBannerActiveCheckbox" checked class="w-4 h-4 text-emerald-600 rounded bg-slate-900 border-slate-700" />
+                <label for="adminBannerActiveCheckbox" class="text-xs font-bold text-slate-200">إظهار الشريط للزوار</label>
+              </div>
+            </div>
+            <button type="submit" class="bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs py-2 px-4 rounded-xl shadow-md transition-all flex items-center gap-1.5 mt-2">
+              <i class="fa-solid fa-bullhorn"></i>
+              <span>نشر الإعلان فوراً للمستخدمين</span>
+            </button>
+          </form>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ========================================== -->
+  <!-- 8. Interactive Printing Service Modal      -->
+  <!-- ========================================== -->
+  <div id="printModal" class="hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-3 select-none">
+    <div class="bg-white rounded-3xl max-w-lg w-full p-5 shadow-2xl border border-slate-200 space-y-4 max-h-[90vh] overflow-y-auto custom-scroll">
+      
+      <!-- Modal Header -->
+      <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+        <div class="flex items-center gap-2">
+          <div class="w-9 h-9 rounded-xl bg-sky-100 text-sky-600 flex items-center justify-center">
+            <i class="fa-solid fa-print"></i>
+          </div>
+          <div>
+            <h3 class="text-sm sm:text-base font-black text-slate-900 font-tajawal">اطبع مذكرتك فوراً</h3>
+            <p class="text-[11px] text-slate-500">حساب تكلفة الطباعة والتغليف وإرسال الملف عبر الواتساب</p>
+          </div>
+        </div>
+        <button id="closePrintModalBtn" class="text-slate-400 hover:text-slate-600 p-1 text-base">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <!-- Upload / Document Picker -->
+      <div class="border-2 border-dashed border-sky-300 rounded-2xl p-4 text-center bg-sky-50/50 hover:bg-sky-50 transition-all cursor-pointer relative" id="fileDropZone">
+        <input type="file" id="printDocInput" class="absolute inset-0 opacity-0 cursor-pointer" accept=".pdf,.doc,.docx,.ppt,.pptx,.jpg,.jpeg,.png" />
+        <i class="fa-solid fa-cloud-arrow-up text-2xl text-sky-600 mb-1"></i>
+        <p class="text-xs font-bold text-slate-800" id="selectedFileNameDisplay">اضغط هنا أو اسحب ملف المذكرة (PDF أو Word أو صور)</p>
+        <p class="text-[10px] text-slate-500 mt-0.5">سيتم تجهيز المذكرة وطباعتها بأعلى دقة ليزر</p>
+      </div>
+
+      <!-- Printing Options Form -->
+      <form id="printCalculatorForm" class="space-y-3">
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">عدد الصفحات:</label>
+            <input type="number" min="1" max="1500" value="20" id="calcPagesCount" class="w-full text-xs font-bold bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-slate-900 focus:ring-2 focus:ring-sky-500" required />
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">عدد النسخ المطلوبة:</label>
+            <input type="number" min="1" max="100" value="1" id="calcCopiesCount" class="w-full text-xs font-bold bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-slate-900 focus:ring-2 focus:ring-sky-500" required />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">نوع الطباعة:</label>
+            <select id="calcColorType" class="w-full text-xs font-bold bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-slate-900 focus:ring-2 focus:ring-sky-500">
+              <option value="bw">أبيض وأسود ليزر</option>
+              <option value="color">ألوان عالية الدقة</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">نوع التغليف والتجليد:</label>
+            <select id="calcBindingType" class="w-full text-xs font-bold bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-slate-900 focus:ring-2 focus:ring-sky-500">
+              <option value="wire">تغليف سلك حديد فاخر</option>
+              <option value="plastic">تغليف بلاستيك حلزوني</option>
+              <option value="staple">تدبيس حراري خفيف</option>
+              <option value="none">بدون تغليف (أوراق مفرطة)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Real-time Cost Calculation Box -->
+        <div class="bg-gradient-to-r from-sky-50 to-emerald-50 rounded-2xl p-3.5 border border-sky-200 space-y-1.5">
+          <div class="flex items-center justify-between text-xs text-slate-600">
+            <span>تكلفة طباعة الصفحات:</span>
+            <span id="costPagesBreakdown" class="font-bold text-slate-800">15.00 ج.م</span>
+          </div>
+          <div class="flex items-center justify-between text-xs text-slate-600">
+            <span>تكلفة التجليد والتغليف:</span>
+            <span id="costBindingBreakdown" class="font-bold text-slate-800">25.00 ج.م</span>
+          </div>
+          <div class="pt-1.5 border-t border-sky-200 flex items-center justify-between text-sm font-black text-slate-900">
+            <span class="text-sky-900">إجمالي التكلفة التقريبية:</span>
+            <span id="costTotalEstimate" class="text-emerald-700 text-base font-black">40.00 ج.م</span>
+          </div>
+        </div>
+
+        <button type="button" id="sendPrintOrderWhatsAppBtn" class="w-full bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-black text-xs sm:text-sm py-3 px-4 rounded-xl shadow-lg transition-all flex items-center justify-center gap-2">
+          <i class="fa-brands fa-whatsapp text-lg"></i>
+          <span>إرسال الملف ومواصفات الطباعة عبر الواتساب</span>
+        </button>
+      </form>
+
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- 9. Smart Cart Drawer / Slide-over Modal    -->
+  <!-- ========================================== -->
+  <div id="cartDrawer" class="hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex justify-start select-none">
+    <div class="bg-white w-full max-w-md h-full shadow-2xl flex flex-col justify-between overflow-hidden">
+      
+      <!-- Cart Header -->
+      <div class="p-4 bg-brand-navy text-white flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <i class="fa-solid fa-cart-shopping text-emerald-400"></i>
+          <h3 class="text-sm sm:text-base font-black font-tajawal">سلة الطلبات الذكية</h3>
+          <span id="cartDrawerCountPill" class="bg-emerald-500/30 text-emerald-300 text-[10px] font-bold px-2 py-0.5 rounded-full">
+            0 عناصر
+          </span>
+        </div>
+        <button id="closeCartBtn" class="text-white/70 hover:text-white p-1 text-lg">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <!-- Cart Items List Container -->
+      <div id="cartItemsList" class="flex-1 overflow-y-auto p-4 space-y-3 custom-scroll">
+        <!-- Rendered dynamically by JavaScript -->
+      </div>
+
+      <!-- Cart Empty View -->
+      <div id="cartEmptyNotice" class="hidden flex-1 flex flex-col items-center justify-center p-6 text-center text-slate-400">
+        <i class="fa-solid fa-cart-arrow-down text-4xl text-slate-300 mb-2"></i>
+        <h4 class="text-sm font-bold text-slate-700 mb-1">السلة فارغة حالياً</h4>
+        <p class="text-xs text-slate-400 mb-4">اختر الكتب والمواد التي تريدها واضغط على "إضافة للطلب".</p>
+        <button id="browseBooksFromCartBtn" class="bg-emerald-600 text-white text-xs font-bold py-2 px-4 rounded-xl">
+          تصفح الكتب الآن
+        </button>
+      </div>
+
+      <!-- Cart Footer / Checkout -->
+      <div id="cartFooterSection" class="p-4 bg-slate-50 border-t border-slate-200 space-y-3">
+        <div>
+          <label class="block text-[11px] font-bold text-slate-600 mb-1">اسم العميل / ملاحظة التسليم (اختياري):</label>
+          <input type="text" id="cartCustomerName" placeholder="مثال: ولي أمر الطالب أحمد - الصف السادس" class="w-full text-xs bg-white border border-slate-300 rounded-xl px-3 py-2 text-slate-800" />
+        </div>
+
+        <div class="flex items-center justify-between text-sm font-black text-slate-900 pt-1">
+          <span>إجمالي المبلغ المطلوب:</span>
+          <span id="cartDrawerTotalPrice" class="text-emerald-700 text-lg font-black">0 ج.م</span>
+        </div>
+
+        <button id="checkoutWhatsAppBtn" class="w-full bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-black text-xs sm:text-sm py-3 px-4 rounded-xl shadow-lg transition-all flex items-center justify-center gap-2">
+          <i class="fa-brands fa-whatsapp text-lg"></i>
+          <span>تأكيد الطلب وإرسال عبر الواتساب</span>
+        </button>
+
+        <button id="clearCartBtn" class="w-full text-center text-xs text-rose-600 hover:text-rose-700 font-bold py-1">
+          إفراغ السلة
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- 10. Hidden Admin Access Modal (Password Only)-->
+  <!-- ========================================== -->
+  <div id="adminAccessModal" class="hidden fixed inset-0 z-50 bg-black/75 backdrop-blur-md flex items-center justify-center p-3 select-none">
+    <div class="bg-gradient-to-b from-slate-900 to-slate-950 text-white rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-slate-700/80 space-y-4">
+      
+      <!-- Prominent Welcoming English Header as strictly required -->
+      <div class="text-center space-y-1">
+        <div class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-amber-500 to-emerald-500 mx-auto flex items-center justify-center text-slate-950 text-xl font-black shadow-lg shadow-amber-500/20 mb-2">
+          <i class="fa-solid fa-code"></i>
+        </div>
+        <h3 class="text-base sm:text-lg font-black text-white tracking-wide font-sans">
+          Welcome Engineer Mohamed Youssef
+        </h3>
+        <p class="text-xs font-semibold text-emerald-400">
+          Master System Administrator & Cloud Lead
+        </p>
+        <p class="text-[11px] text-slate-400 pt-1">
+          لوحة الإدارة السحابية والتحكم في الأسعار والمحتوى
+        </p>
+      </div>
+
+      <!-- Password Input Form (NO username field) -->
+      <form id="adminLoginForm" class="space-y-3 pt-2">
+        <div class="relative">
+          <input 
+            type="password" 
+            id="adminPasswordInput" 
+            placeholder="أدخل كلمة المرور السحابية..." 
+            class="w-full text-center text-xs sm:text-sm bg-slate-800/90 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all font-mono"
+            autocomplete="current-password"
+            required 
+          />
+          <button type="button" id="togglePasswordVisibilityBtn" class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 hover:text-white">
+            <i class="fa-regular fa-eye text-xs"></i>
+          </button>
+        </div>
+
+        <div id="loginFeedback" class="hidden text-center text-xs font-bold text-rose-400"></div>
+
+        <button type="submit" id="adminSubmitLoginBtn" class="w-full bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 active:scale-95 text-white font-black text-xs sm:text-sm py-3 rounded-xl shadow-lg transition-all">
+          دخول لوحة التحكم
+        </button>
+
+        <button type="button" id="closeAdminModalBtn" class="w-full text-center text-xs text-slate-500 hover:text-slate-300 py-1">
+          إلغاء والعودة للمتجر
+        </button>
+      </form>
+
+      <div class="text-center text-[10px] text-slate-500 pt-1 border-t border-slate-800">
+        المحاولات المتبقية: <span id="loginAttemptsLeft" class="text-amber-400 font-bold">3</span> محاولات
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- 11. Add New Book Modal (Admin Only)        -->
+  <!-- ========================================== -->
+  <div id="addNewBookModal" class="hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-3 select-none">
+    <div class="bg-slate-900 text-white rounded-3xl max-w-md w-full p-5 shadow-2xl border border-slate-700 space-y-4">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+        <h3 class="text-sm font-black text-white font-tajawal">إضافة كتاب أو منتج جديد</h3>
+        <button id="closeNewBookModalBtn" class="text-slate-400 hover:text-white p-1">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <form id="addNewBookForm" class="space-y-3">
+        <div>
+          <label class="block text-xs font-bold text-slate-300 mb-1">اسم الكتاب أو المادة:</label>
+          <input type="text" id="newBookTitle" placeholder="مثال: كتاب المعاصر في الرياضيات" class="w-full text-xs bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white" required />
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-xs font-bold text-slate-300 mb-1">المرحلة:</label>
+            <select id="newBookStage" class="w-full text-xs bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white">
+              <option value="ابتدائي">ابتدائي</option>
+              <option value="إعدادي">إعدادي</option>
+              <option value="ثانوي">ثانوي</option>
+              <option value="أخرى">أخرى</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-300 mb-1">الصف الدراسي:</label>
+            <input type="text" id="newBookGrade" placeholder="مثال: الصف السادس الابتدائي" class="w-full text-xs bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white" required />
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-xs font-bold text-slate-300 mb-1">المادة الدراسية:</label>
+            <input type="text" id="newBookSubject" placeholder="مثال: رياضيات" class="w-full text-xs bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white" required />
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-300 mb-1">السلسلة / الدار:</label>
+            <input type="text" id="newBookSeries" placeholder="مثال: المعاصر، الامتحان..." class="w-full text-xs bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white" required />
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-xs font-bold text-slate-300 mb-1">السعر (ج.م):</label>
+            <input type="number" min="0" step="1" id="newBookPrice" placeholder="150" class="w-full text-xs bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white font-bold" required />
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-300 mb-1">حالة التوفر:</label>
+            <select id="newBookStock" class="w-full text-xs bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white">
+              <option value="متوفر بالمكتبة">متوفر بالمكتبة</option>
+              <option value="كمية محدودة">كمية محدودة</option>
+              <option value="قيد التجهيز">قيد التجهيز</option>
+            </select>
+          </div>
+        </div>
+        <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs py-2.5 rounded-xl shadow-md transition-all">
+          حفظ وإضافة للمتجر
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- 12. Printable Report Container (PDF View)  -->
+  <!-- ========================================== -->
+  <div id="printableReportArea" class="hidden">
+    <div class="p-6 max-w-4xl mx-auto space-y-4">
+      <div class="flex items-center justify-between border-b-2 border-slate-800 pb-3">
+        <div>
+          <h1 class="text-xl font-black">مكتبة نهر العلم - إدارة أ/ إيهاب</h1>
+          <p class="text-xs">بيان معتمد بأسعار الكتب الخارجية والمستلزمات الدراسية</p>
+        </div>
+        <div class="text-left text-xs font-bold">
+          <p>هاتف: 01002968331 - 01157706887</p>
+          <p id="reportPrintDate"></p>
+        </div>
+      </div>
+      <table class="w-full text-right text-xs border-collapse border border-slate-300">
+        <thead>
+          <tr class="bg-slate-100 border-b border-slate-300">
+            <th class="p-2 border border-slate-300">#</th>
+            <th class="p-2 border border-slate-300">اسم الكتاب</th>
+            <th class="p-2 border border-slate-300">المرحلة</th>
+            <th class="p-2 border border-slate-300">الصف الدراسي</th>
+            <th class="p-2 border border-slate-300">المادة</th>
+            <th class="p-2 border border-slate-300">السعر الرسمي</th>
+          </tr>
+        </thead>
+        <tbody id="printableReportTableBody">
+          <!-- Populated before print -->
+        </tbody>
+      </table>
+      <div class="pt-4 text-center text-xs text-slate-500 border-t border-slate-200">
+        نهر العلم - الإدارة العامة أ/ إيهاب | تطوير م/ محمد يوسف
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- 13. Luxury Native App Bottom Navigation    -->
   <!-- ========================================== -->
   <nav class="fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur-lg border-t border-slate-200/90 shadow-[0_-4px_25px_rgba(0,0,0,0.08)] py-1.5 px-2 select-none">
     <div class="max-w-lg mx-auto flex items-center justify-around gap-1">
       
       <!-- Nav Item 1: Books -->
-      <button data-target-category="books" class="bottom-nav-item active flex flex-col items-center justify-center py-1 px-2.5 rounded-xl transition-all text-emerald-600 font-bold">
-        <div class="nav-icon-box w-7 h-7 rounded-lg flex items-center justify-center bg-emerald-50 text-emerald-600 transition-colors">
+      <button id="navBottomBooks" class="bottom-nav-item active flex flex-col items-center justify-center py-1 px-2.5 rounded-xl transition-all text-emerald-600 font-bold">
+        <div class="w-7 h-7 rounded-lg flex items-center justify-center bg-emerald-50 text-emerald-600 transition-colors">
           <i class="fa-solid fa-book-open text-xs"></i>
         </div>
         <span class="text-[10px] mt-0.5">الكتب</span>
       </button>
 
-      <!-- Nav Item 2: Printing -->
-      <button data-target-category="printing" class="bottom-nav-item flex flex-col items-center justify-center py-1 px-2.5 rounded-xl transition-all text-slate-500 hover:text-slate-800">
-        <div class="nav-icon-box w-7 h-7 rounded-lg flex items-center justify-center text-slate-500 transition-colors">
+      <!-- Nav Item 2: Print Utility -->
+      <button id="navBottomPrint" class="bottom-nav-item flex flex-col items-center justify-center py-1 px-2.5 rounded-xl transition-all text-slate-500 hover:text-slate-800">
+        <div class="w-7 h-7 rounded-lg flex items-center justify-center text-slate-500 transition-colors">
           <i class="fa-solid fa-print text-xs"></i>
         </div>
         <span class="text-[10px] mt-0.5">الطباعة</span>
       </button>
 
-      <!-- Nav Item 3: Center WhatsApp Floating Action Button (Elevated) -->
-      <a href="https://wa.me/201002968331?text=%D9%85%D8%B1%D8%AD%D8%A8%D8%A7%D9%8B%20%D9%85%D9%83%D8%AA%D8%A8%D8%A9%20%D9%86%D9%87%D8%B1%20%D8%A7%D9%84%D8%B9%D9%84%D9%85%20(%D8%A5%D8%AF%D8%A7%D8%B1%D8%A9%20%D8%A3/%20%D8%A5%D9%8A%D9%87%D8%A7%D8%A8)%D8%8C%20%D8%A3%D9%88%D8%AF%20%D8%A7%D9%84%D8%A7%D8%B3%D8%AA%D9%81%D8%B3%D8%A7%D8%B1%20%D8%B9%D9%86%20%D8%AA%D9%88%D9%81%D8%B1%20%D8%A7%D9%84%D9%85%D9%86%D8%AA%D8%AC%D8%A7%D8%AA." 
+      <!-- Nav Item 3: Center WhatsApp Floating Button -->
+      <a href="https://wa.me/201002968331?text=%D9%85%D8%B1%D8%AD%D8%A8%D8%A7%D9%8B%20%D9%85%D9%83%D8%AA%D8%A8%D8%A9%20%D9%86%D9%87%D8%B1%20%D8%A7%D9%84%D8%B9%D9%84%D9%85%20(%D8%A5%D8%AF%D8%A7%D8%B1%D8%A9%20%D8%A3/%20%D8%A5%D9%8A%D9%87%D8%A7%D8%A8)%D8%8C%20%D8%A3%D9%88%D8%AF%20%D8%A7%D9%84%D8%A7%D8%B3%D8%AA%D9%81%D8%B3%D8%A7%D8%B1%20%D8%B9%D9%86%20%D8%AA%D9%88%D9%81%D8%B1%20%D8%A7%D9%84%D9%83%D8%AA%D8%A8." 
          target="_blank" 
          rel="noopener"
          title="محادثة واتساب مباشرة"
@@ -371,26 +957,27 @@
         <i class="fa-brands fa-whatsapp text-xl"></i>
       </a>
 
-      <!-- Nav Item 4: Stationery -->
-      <button data-target-category="stationery" class="bottom-nav-item flex flex-col items-center justify-center py-1 px-2.5 rounded-xl transition-all text-slate-500 hover:text-slate-800">
-        <div class="nav-icon-box w-7 h-7 rounded-lg flex items-center justify-center text-slate-500 transition-colors">
-          <i class="fa-solid fa-pen-ruler text-xs"></i>
+      <!-- Nav Item 4: Smart Cart -->
+      <button id="navBottomCart" class="bottom-nav-item flex flex-col items-center justify-center py-1 px-2.5 rounded-xl transition-all text-slate-500 hover:text-slate-800">
+        <div class="relative w-7 h-7 rounded-lg flex items-center justify-center text-slate-500 transition-colors">
+          <i class="fa-solid fa-cart-shopping text-xs"></i>
+          <span id="bottomNavCartCount" class="hidden absolute -top-1 -right-1 bg-amber-500 text-slate-900 text-[9px] font-black w-4 h-4 rounded-full flex items-center justify-center">0</span>
         </div>
-        <span class="text-[10px] mt-0.5">الأدوات</span>
+        <span class="text-[10px] mt-0.5">السلة</span>
       </button>
 
-      <!-- Nav Item 5: Gifts -->
-      <button data-target-category="gifts" class="bottom-nav-item flex flex-col items-center justify-center py-1 px-2.5 rounded-xl transition-all text-slate-500 hover:text-slate-800">
-        <div class="nav-icon-box w-7 h-7 rounded-lg flex items-center justify-center text-slate-500 transition-colors">
-          <i class="fa-solid fa-gifts text-xs"></i>
+      <!-- Nav Item 5: Hotline Call -->
+      <a href="tel:01002968331" class="bottom-nav-item flex flex-col items-center justify-center py-1 px-2.5 rounded-xl transition-all text-slate-500 hover:text-slate-800">
+        <div class="w-7 h-7 rounded-lg flex items-center justify-center text-slate-500 transition-colors">
+          <i class="fa-solid fa-phone text-xs"></i>
         </div>
-        <span class="text-[10px] mt-0.5">الهدايا</span>
-      </button>
+        <span class="text-[10px] mt-0.5">اتصال</span>
+      </a>
 
     </div>
   </nav>
 
-  <!-- App Core JavaScript Logic -->
+  <!-- Core Application Logic -->
   <script src="./app.js"></script>
 </body>
 </html>
