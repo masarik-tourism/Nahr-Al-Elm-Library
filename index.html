@@ -18,10 +18,18 @@
   <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png" />
   <link rel="apple-touch-icon" href="./icons/icon-192.png" />
 
-  <!-- الخطوط العربية -->
+  <!-- تسريع الاتصال المسبق بالخوادم (Preconnect & DNS-Prefetch) -->
+  <link rel="dns-prefetch" href="https://cdn.tailwindcss.com" />
+  <link rel="dns-prefetch" href="https://cdnjs.cloudflare.com" />
+  <link rel="dns-prefetch" href="https://www.gstatic.com" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&family=Tajawal:wght@500;700;800;900&display=swap" rel="stylesheet" />
+  <link rel="preconnect" href="https://cdn.tailwindcss.com" crossorigin />
+  <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin />
+  <link rel="preconnect" href="https://www.gstatic.com" crossorigin />
+
+  <!-- الخطوط العربية (أوزان محسّنة لسرعة التحميل) -->
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@600;700;800;900&family=Tajawal:wght@700;800&display=swap" rel="stylesheet" />
 
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -51,15 +59,17 @@
     }
   </script>
 
-  <!-- Font Awesome 6 -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+  <!-- Font Awesome 6 (تحميل غير معطل للعرض) -->
+  <link rel="preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" onload="this.onload=null;this.rel='stylesheet'" />
+  <noscript>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+  </noscript>
 
-  <!-- مكتبة PDF.js لحساب عدد صفحات ملفات PDF تلقائياً -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-
-  <!-- Firebase App & Realtime Database SDK -->
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+  <!-- Firebase App & Realtime Database SDK (تحميل مؤجل لعدم حجب الصفحة) -->
+  <script defer src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script defer src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+  <!-- المحرك البرمجي للتطبيق (PDF.js يُحمّل تلقائياً عند فتح نافذة الطباعة فقط) -->
+  <script defer src="./app.js"></script>
 
   <style>
     body {
@@ -170,7 +180,7 @@
         <div id="installBtnContainer">
           <a
             id="installAppBtn"
-            href="https://github.com/masarik-tourism/Nahr-Al-Elm-Library/releases/latest/download/Nahr-Al-Elm-Library.apk"
+            href="https://masarik-tourism.github.io/Nahr-Al-Elm-Library/Nahr-Al-Elm-Library.apk"
             download="Nahr-Al-Elm-Library.apk"
             title="تحميل وتثبيت تطبيق الأندرويد مباشرة"
             class="flex items-center gap-1 bg-amber-500 hover:bg-amber-600 active:scale-95 text-slate-950 font-black text-[11px] sm:text-xs py-1.5 px-2 sm:px-3 rounded-xl shadow transition-all whitespace-nowrap"
@@ -480,7 +490,7 @@
             </a>
             <a
               id="footerApkDownloadBtn"
-              href="https://github.com/masarik-tourism/Nahr-Al-Elm-Library/releases/latest/download/Nahr-Al-Elm-Library.apk"
+              href="https://masarik-tourism.github.io/Nahr-Al-Elm-Library/Nahr-Al-Elm-Library.apk"
               download="Nahr-Al-Elm-Library.apk"
               class="flex items-center gap-1.5 text-xs font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 px-3 py-1.5 rounded-xl border border-emerald-200 transition-all"
             >
@@ -767,7 +777,5 @@
     </div>
   </nav>
 
-  <!-- المحرك البرمجي للتطبيق -->
-  <script src="./app.js"></script>
-</body>
+  </body>
 </html>

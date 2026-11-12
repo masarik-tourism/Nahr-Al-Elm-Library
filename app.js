@@ -31,7 +31,7 @@ const firebaseConfig = {
 const STORE_WHATSAPP_NUMBER = "201002968331";
 const STORE_PUBLIC_URL = "https://masarik-tourism.github.io/Nahr-Al-Elm-Library/";
 const DIRECT_APK_DOWNLOAD_URL =
-  "https://github.com/masarik-tourism/Nahr-Al-Elm-Library/releases/latest/download/Nahr-Al-Elm-Library.apk";
+  "https://masarik-tourism.github.io/Nahr-Al-Elm-Library/Nahr-Al-Elm-Library.apk";
 const STORAGE_KEYS = {
   BOOKS: "nahralelm_books_v2",
   RATES: "nahralelm_print_rates_v2",
@@ -626,6 +626,8 @@ function escapeHtml(str) {
     .replace(/'/g, "&#39;");
 }
 
+const fallbackSvgCache = new Map();
+
 function getFallbackThumbnailSvg(item) {
   const paletteMap = {
     books: { bg1: "#0A2540", bg2: "#1E3A8A", accent: "#10B981", label: "كتاب خارجي" },
@@ -635,8 +637,13 @@ function getFallbackThumbnailSvg(item) {
     printing: { bg1: "#0C4A6E", bg2: "#0284C7", accent: "#38BDF8", label: "خدمة طباعة" }
   };
 
-  const theme = paletteMap[item.category] || paletteMap.books;
+  const category = item.category || "books";
+  const theme = paletteMap[category] || paletteMap.books;
   const tagText = (item.series || theme.label).slice(0, 18);
+  const cacheKey = `${category}::${tagText}`;
+  if (fallbackSvgCache.has(cacheKey)) {
+    return fallbackSvgCache.get(cacheKey);
+  }
 
   const svg = `
     <svg xmlns="http://www.w3.org/2000/svg" width="400" height="280" viewBox="0 0 400 280">
@@ -656,7 +663,9 @@ function getFallbackThumbnailSvg(item) {
     </svg>
   `.trim();
 
-  return "data:image/svg+xml;charset=UTF-8," + encodeURIComponent(svg);
+  const encoded = "data:image/svg+xml;charset=UTF-8," + encodeURIComponent(svg);
+  fallbackSvgCache.set(cacheKey, encoded);
+  return encoded;
 }
 
 function resolveProductImage(item) {
@@ -999,6 +1008,8 @@ function renderHotDeals() {
             <img
               src="${escapeHtml(thumbUrl)}"
               alt="${escapeHtml(item.title)}"
+              loading="lazy"
+              decoding="async"
               onerror="this.onerror=null; this.src='${fallbackUrl}';"
               class="w-full h-full object-cover"
             />
@@ -1072,6 +1083,8 @@ function renderCatalogGrid() {
               <img
                 src="${escapeHtml(thumbUrl)}"
                 alt="${escapeHtml(item.title)}"
+                loading="lazy"
+                decoding="async"
                 onerror="this.onerror=null; this.src='${fallbackUrl}';"
                 class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
               />
@@ -1369,11 +1382,38 @@ function sendCartOrderWhatsApp() {
 // =========================================================================
 // 10. حاسبة الطباعة الذكية وعدّ صفحات PDF تلقائياً بـ PDF.js
 // =========================================================================
+let pdfJsLoadPromise = null;
+
 function configurePdfJsWorker() {
   if (typeof window.pdfjsLib !== "undefined") {
     window.pdfjsLib.GlobalWorkerOptions.workerSrc =
       "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
   }
+}
+
+function ensurePdfJsLoaded() {
+  if (typeof window.pdfjsLib !== "undefined") {
+    configurePdfJsWorker();
+    return Promise.resolve(window.pdfjsLib);
+  }
+  if (pdfJsLoadPromise) return pdfJsLoadPromise;
+
+  pdfJsLoadPromise = new Promise((resolve, reject) => {
+    const script = document.createElement("script");
+    script.src = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js";
+    script.async = true;
+    script.onload = () => {
+      configurePdfJsWorker();
+      resolve(window.pdfjsLib);
+    };
+    script.onerror = (err) => {
+      pdfJsLoadPromise = null;
+      reject(err);
+    };
+    document.head.appendChild(script);
+  });
+
+  return pdfJsLoadPromise;
 }
 
 async function handlePrintFileSelection(file) {
@@ -1390,7 +1430,7 @@ async function handlePrintFileSelection(file) {
   const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
   const isImage = file.type.startsWith("image/") || /\.(jpg|jpeg|png|webp)$/i.test(file.name);
 
-  if (isPdf && typeof window.pdfjsLib !== "undefined") {
+  if (isPdf) {
     if (statusPill) {
       statusPill.classList.remove("hidden", "bg-amber-100", "text-amber-800");
       statusPill.classList.add("bg-sky-100", "text-sky-800");
@@ -1398,6 +1438,10 @@ async function handlePrintFileSelection(file) {
     }
 
     try {
+      await ensurePdfJsLoaded();
+      if (typeof window.pdfjsLib === "undefined") {
+        throw new Error("PDF.js unavailable");
+      }
       const arrayBuffer = await file.arrayBuffer();
       const loadingTask = window.pdfjsLib.getDocument({
         data: arrayBuffer,
@@ -2953,8 +2997,7 @@ function selectMainCategory(cat) {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-  // تهيئة البيانات والملحقات
-  configurePdfJsWorker();
+  // تهيئة البيانات والملحقات (مع تأجيل PDF.js لحين فتح نافذة الطباعة)
   loadInitialState();
   initializeFirebase();
   registerServiceWorkerSafely();
@@ -3104,10 +3147,11 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  // أحداث الطباعة الذكية (PDF.js)
+  // أحداث الطباعة الذكية (PDF.js يُحمّل تلقائياً عند فتح النافذة)
   const openPrint = () => {
     document.getElementById("printModal")?.classList.remove("hidden");
     updatePrintCalculator();
+    ensurePdfJsLoaded().catch(() => {});
   };
   document.getElementById("openPrintModalBtn")?.addEventListener("click", openPrint);
   document.getElementById("heroPrintBtn")?.addEventListener("click", openPrint);

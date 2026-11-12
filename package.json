@@ -1,6 +1,6 @@
 {
   "name": "nahr-alelm-library-pwa",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "description": "مكتبة نهر العلم - إدارة أ/ إيهاب | تطبيق الويب المتقدم والنسخة المحمولة (PWA & Android)",
   "main": "app.js",
   "scripts": {

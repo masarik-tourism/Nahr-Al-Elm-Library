@@ -124,15 +124,11 @@ fun NativeWebShellScreen(modifier: Modifier = Modifier) {
             allowContentAccess = true
             useWideViewPort = true
             loadWithOverviewMode = true
-            // Always fetch fresh OTA HTML/JS when online; allow cache when offline
-            cacheMode = if (online) WebSettings.LOAD_NO_CACHE else WebSettings.LOAD_CACHE_ELSE_NETWORK
+            // Keep CDN assets cached across launches while OTA HTML checks network freshness via headers
+            cacheMode = if (online) WebSettings.LOAD_DEFAULT else WebSettings.LOAD_CACHE_ELSE_NETWORK
             mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
             val defaultUa = userAgentString
-            userAgentString = "$defaultUa NahrAlElmNativeApp/2.0 (Android Native APK Shell)"
-          }
-
-          if (online) {
-            clearCache(false)
+            userAgentString = "$defaultUa NahrAlElmNativeApp/2.2 (Android Native APK Shell)"
           }
 
           // Inject JavaScript interface
@@ -320,7 +316,9 @@ private fun handleCustomUrlIntents(context: Context, url: String): Boolean {
         true
       }
 
-      url.contains("github.com/masarik-tourism/Nahr-Al-Elm-Library/releases") -> {
+      url.endsWith(".apk") ||
+        url.contains(".apk?") ||
+        url.contains("github.com/masarik-tourism/Nahr-Al-Elm-Library/releases") -> {
         val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse(url)).apply {
           flags = Intent.FLAG_ACTIVITY_NEW_TASK
         }
@@ -358,7 +356,7 @@ class AndroidNativeBridge(
   fun isNativeApp(): Boolean = true
 
   @JavascriptInterface
-  fun getAppVersion(): String = "2.1.0"
+  fun getAppVersion(): String = "2.2.0"
 
   @JavascriptInterface
   fun reloadLatestOta() {
