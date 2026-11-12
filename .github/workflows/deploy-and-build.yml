@@ -169,11 +169,22 @@ jobs:
             gradle assembleDebug --stacktrace --no-daemon -Dorg.gradle.workers.max=2
           fi
 
-      - name: Locate and Package APK Artifact
+      - name: Locate, Verify Signature & Package APK Artifact
         run: |
           mkdir -p build-output
-          find app/build/outputs/apk/ -name "*.apk" -exec cp {} build-output/Nahr-Al-Elm-Library.apk \;
-          test -f build-output/Nahr-Al-Elm-Library.apk
+          APK_SOURCE="app/build/outputs/apk/debug/app-debug.apk"
+          if [ ! -f "$APK_SOURCE" ]; then
+            APK_SOURCE=$(find app/build/outputs/apk/ -name "*.apk" | head -n 1)
+          fi
+          test -f "$APK_SOURCE"
+          cp -f "$APK_SOURCE" build-output/Nahr-Al-Elm-Library.apk
+
+          SDK_DIR="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
+          BT=$(ls -1 "$SDK_DIR/build-tools" | sort -V | tail -n 1)
+          if [ -n "$BT" ] && [ -x "$SDK_DIR/build-tools/$BT/apksigner" ]; then
+            "$SDK_DIR/build-tools/$BT/apksigner" verify --verbose --print-certs build-output/Nahr-Al-Elm-Library.apk
+            "$SDK_DIR/build-tools/$BT/zipalign" -c 4 build-output/Nahr-Al-Elm-Library.apk
+          fi
           ls -lah build-output/
 
       - name: Upload Native Android APK Artifact
@@ -184,19 +195,19 @@ jobs:
           retention-days: 30
           if-no-files-found: error
 
-      # Attach the compiled APK directly into GitHub Release (v2.0.0)
+      # Attach the compiled APK directly into GitHub Release (v2.1.0)
       - name: Publish APK Asset to GitHub Release
         uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'release' || github.ref == 'refs/heads/main'
         with:
           files: build-output/Nahr-Al-Elm-Library.apk
-          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'v2.0.0' }}
-          name: "إصدار مكتبة نهر العلم - تطبيق الأندرويد ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'v2.0.0' }}"
+          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'v2.1.0' }}
+          name: "إصدار مكتبة نهر العلم - تطبيق الأندرويد ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'v2.1.0' }}"
           body: |
-            ### 📱 تطبيق مكتبة نهر العلم - إدارة أ/ إيهاب (الإصدار 2.0.0)
-            - مبني وموقّع بنفس مفتاح التوقيع الرقمي الثابت (`com.aistudio.nahralelm.bkzq`) لضمان التحديث السلس فوق النسخة السابقة.
-            - أقسام منفصلة واضحة (الكل، الكتب الخارجية، الأدوات المكتبية، باكدجات السبلايز، الهدايا، وخدمات الطباعة).
-            - شريط بحث فوري + فلاتر ذكية + عروض السبلايز + حساب صفحات PDF تلقائياً بـ PDF.js.
+            ### 📱 تطبيق مكتبة نهر العلم - إدارة أ/ إيهاب (الإصدار 2.1.0)
+            - محرك التحديث التلقائي المباشر (Auto-OTA) لسحب أي تحديثات جديدة من الموقع تلقائياً عند الفتح دون إعادة تثبيت.
+            - لوحة تحكم سحابية متكاملة (4 تبويبات) + حساب صفحات PDF تلقائياً بـ PDF.js + سلة طلبات ذكية برسوم التوصيل.
+            - تحقّق من حذف أي نسخة تجريبية قديمة جداً (v1.0.0) قبل تثبيت هذا الإصدار الافتتاحي لمرة واحدة فقط.
           draft: false
           prerelease: false
           make_latest: true

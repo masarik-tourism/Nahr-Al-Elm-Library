@@ -2979,7 +2979,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (anchorEl && anchorEl.getAttribute("href") !== DIRECT_APK_DOWNLOAD_URL) {
       anchorEl.setAttribute("href", DIRECT_APK_DOWNLOAD_URL);
     }
-    showToastNotification("بدأ التحميل المباشر لتطبيق مكتبة نهر العلم (APK)... افتح الملف بعد اكتمال التنزيل للتثبيت فوراً.");
+    showToastNotification("بدأ التحميل المباشر للتطبيق (APK)... افتحه للتثبيت (ولو وجدت نسخة قديمة جداً احذفها أولاً).");
   };
 
   const installAppBtn = document.getElementById("installAppBtn");
