@@ -5,7 +5,7 @@
  * pushed to GitHub Pages is pulled immediately by both mobile browsers and the Android APK.
  */
 
-const CACHE_VERSION = 'nahralelm-ota-v2.0.1';
+const CACHE_VERSION = 'nahralelm-ota-v2.1.0';
 const CACHE_NAME = `nahr-alelm-cache-${CACHE_VERSION}`;
 
 // الملفات الأساسية المطلوبة للتشغيل بدون إنترنت
