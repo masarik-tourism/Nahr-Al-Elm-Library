@@ -104,17 +104,19 @@ jobs:
           "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-36.1" "platforms;android-36" "build-tools;36.0.0" "platform-tools" || true
           ls -lah "$ANDROID_HOME/platforms" || true
 
-      - name: Ensure Debug Keystore Exists
+      - name: Restore & Verify Consistent Signing Keystore (Zero Mismatch)
         run: |
           if [ ! -f "debug.keystore" ]; then
             if [ -f "debug.keystore.base64" ]; then
-              echo "Restoring debug.keystore from base64..."
+              echo "Restoring consistent debug.keystore from debug.keystore.base64..."
               base64 -d debug.keystore.base64 > debug.keystore
             else
-              echo "Generating standard debug.keystore..."
-              keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
+              echo "ERROR: Consistent debug.keystore and debug.keystore.base64 are both missing!"
+              exit 1
             fi
           fi
+          echo "Verifying Signing Keystore SHA-256 Fingerprint..."
+          keytool -list -v -keystore debug.keystore -storepass android -alias androiddebugkey | grep -E "SHA1:|SHA256:"
           ls -lah debug.keystore
 
       - name: Ensure Secrets and Config Files Exist
@@ -173,19 +175,19 @@ jobs:
           retention-days: 30
           if-no-files-found: error
 
-      # Attach the compiled APK directly into GitHub Release (e.g., v1.0.0)
+      # Attach the compiled APK directly into GitHub Release (v2.0.0)
       - name: Publish APK Asset to GitHub Release
         uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'release' || github.ref == 'refs/heads/main'
         with:
           files: build-output/Nahr-Al-Elm-Library.apk
-          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'v1.0.0' }}
-          name: "إصدار مكتبة نهر العلم - تطبيق الأندرويد ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'v1.0.0' }}"
+          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'v2.0.0' }}
+          name: "إصدار مكتبة نهر العلم - تطبيق الأندرويد ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'v2.0.0' }}"
           body: |
-            ### 📱 تطبيق مكتبة نهر العلم - إدارة أ/ إيهاب (APK الأصلي)
-            - النسخة الرسمية الأولى للأندرويد جاهزة للتثبيت المباشر.
-            - يشمل كافة أقسام الكتب الخارجية، خدمات المطبوعات والتصوير، الأدوات المدرسية، وهدايا الأطفال.
-            - يدعم التحديث الهوائي التلقائي السريع (OTA).
+            ### 📱 تطبيق مكتبة نهر العلم - إدارة أ/ إيهاب (الإصدار 2.0.0)
+            - مبني وموقّع بنفس مفتاح التوقيع الرقمي الثابت (`com.aistudio.nahralelm.bkzq`) لضمان التحديث السلس فوق النسخة السابقة.
+            - أقسام منفصلة واضحة (الكل، الكتب الخارجية، الأدوات المكتبية، باكدجات السبلايز، الهدايا، وخدمات الطباعة).
+            - شريط بحث فوري + فلاتر ذكية + عروض السبلايز + حساب صفحات PDF تلقائياً بـ PDF.js.
           draft: false
           prerelease: false
           token: ${{ secrets.GITHUB_TOKEN }}

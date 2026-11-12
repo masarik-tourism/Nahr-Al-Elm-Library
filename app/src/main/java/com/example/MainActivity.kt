@@ -8,6 +8,7 @@ import android.net.Uri
 import android.os.Bundle
 import android.view.ViewGroup
 import android.webkit.JavascriptInterface
+import android.webkit.ValueCallback
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
@@ -17,8 +18,10 @@ import android.webkit.WebViewClient
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -26,7 +29,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -54,7 +56,7 @@ class MainActivity : ComponentActivity() {
           modifier = Modifier
             .fillMaxSize()
             .statusBarsPadding()
-        ) { innerPadding ->
+        ) { _ ->
           NativeWebShellScreen(
             modifier = Modifier.fillMaxSize()
           )
@@ -66,8 +68,8 @@ class MainActivity : ComponentActivity() {
 
 /**
  * Native Android APK Shell Wrapper for Nahr Al-Elm Library (مكتبة نهر العلم).
- * Embeds the PWA/Web interface, injects AndroidBridge to automatically hide the install button,
- * intercepts WhatsApp and Tel intent deep links, and handles native back-stack navigation.
+ * Embeds the PWA/Web interface, supports native file choosing for PDF page counting,
+ * provides native share sheet integration, and intercepts WhatsApp/Tel deep links.
  */
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
@@ -77,6 +79,16 @@ fun NativeWebShellScreen(modifier: Modifier = Modifier) {
   var canGoBack by remember { mutableStateOf(false) }
   var pageProgress by remember { mutableFloatStateOf(1f) }
   var isLoading by remember { mutableStateOf(false) }
+  var filePathCallback by remember { mutableStateOf<ValueCallback<Array<Uri>>?>(null) }
+
+  // Native Android file picker for <input type="file"> (PDF.js document selection)
+  val filePickerLauncher = rememberLauncherForActivityResult(
+    contract = ActivityResultContracts.OpenDocument()
+  ) { uri: Uri? ->
+    val results = if (uri != null) arrayOf(uri) else null
+    filePathCallback?.onReceiveValue(results)
+    filePathCallback = null
+  }
 
   // Intercept system back gestures to navigate WebView history if possible
   BackHandler(enabled = canGoBack) {
@@ -108,9 +120,8 @@ fun NativeWebShellScreen(modifier: Modifier = Modifier) {
             loadWithOverviewMode = true
             cacheMode = WebSettings.LOAD_DEFAULT
             mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
-            // Append native app identifier for conditional PWA install button hiding
             val defaultUa = userAgentString
-            userAgentString = "$defaultUa NahrAlElmNativeApp/1.0 (Android Native APK Shell)"
+            userAgentString = "$defaultUa NahrAlElmNativeApp/2.0 (Android Native APK Shell)"
           }
 
           // Inject JavaScript interface
@@ -122,6 +133,30 @@ fun NativeWebShellScreen(modifier: Modifier = Modifier) {
               pageProgress = newProgress / 100f
               isLoading = newProgress < 100
             }
+
+            override fun onShowFileChooser(
+              webView: WebView?,
+              callback: ValueCallback<Array<Uri>>?,
+              fileChooserParams: FileChooserParams?
+            ): Boolean {
+              filePathCallback?.onReceiveValue(null)
+              filePathCallback = callback
+              return try {
+                filePickerLauncher.launch(
+                  arrayOf(
+                    "application/pdf",
+                    "image/*",
+                    "application/msword",
+                    "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                  )
+                )
+                true
+              } catch (_: Exception) {
+                filePathCallback = null
+                Toast.makeText(ctx, "تعذر فتح مدير الملفات", Toast.LENGTH_SHORT).show()
+                false
+              }
+            }
           }
 
           webViewClient = object : WebViewClient() {
@@ -129,9 +164,8 @@ fun NativeWebShellScreen(modifier: Modifier = Modifier) {
               super.onPageStarted(view, url, favicon)
               canGoBack = view?.canGoBack() == true
               isLoading = true
-              // Immediate injection of native flag into document
               view?.evaluateJavascript(
-                "window.isNativeApp = true; window.AndroidApp = window.AndroidApp || true;",
+                "window.isNativeApp = true;",
                 null
               )
             }
@@ -140,21 +174,8 @@ fun NativeWebShellScreen(modifier: Modifier = Modifier) {
               super.onPageFinished(view, url)
               canGoBack = view?.canGoBack() == true
               isLoading = false
-              // Ensure install button is strictly hidden inside compiled native APK shell
               view?.evaluateJavascript(
-                """
-                (function() {
-                  window.isNativeApp = true;
-                  var btn = document.getElementById('installBtnContainer');
-                  if (btn) {
-                    btn.classList.add('hidden');
-                    btn.style.display = 'none';
-                  }
-                  if (typeof handleInstallButtonVisibility === 'function') {
-                    handleInstallButtonVisibility();
-                  }
-                })();
-                """.trimIndent(),
+                "window.isNativeApp = true;",
                 null
               )
             }
@@ -179,14 +200,13 @@ fun NativeWebShellScreen(modifier: Modifier = Modifier) {
               error: WebResourceError?
             ) {
               super.onReceivedError(view, request, error)
-              // If main frame failed and not local asset, fallback to bundled offline asset
               if (request?.isForMainFrame == true && request.url.scheme != "file") {
                 view?.loadUrl("file:///android_asset/index.html")
               }
             }
           }
 
-          // Load local bundled asset for instant startup with offline and OTA support
+          // Load local bundled asset for instant startup with offline & Firebase live sync
           loadUrl("file:///android_asset/index.html")
           webViewInstance = this
         }
@@ -222,7 +242,6 @@ fun NativeWebShellScreen(modifier: Modifier = Modifier) {
 private fun handleCustomUrlIntents(context: Context, url: String): Boolean {
   return try {
     when {
-      // WhatsApp deep links
       url.contains("wa.me") || url.startsWith("whatsapp://") -> {
         val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url)).apply {
           flags = Intent.FLAG_ACTIVITY_NEW_TASK
@@ -230,7 +249,6 @@ private fun handleCustomUrlIntents(context: Context, url: String): Boolean {
         try {
           context.startActivity(intent)
         } catch (_: Exception) {
-          // If WhatsApp app is not installed, open in web browser
           val webIntent = Intent(Intent.ACTION_VIEW, Uri.parse(url)).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK
           }
@@ -239,7 +257,6 @@ private fun handleCustomUrlIntents(context: Context, url: String): Boolean {
         true
       }
 
-      // Telephone hotlines
       url.startsWith("tel:") -> {
         val dialIntent = Intent(Intent.ACTION_DIAL, Uri.parse(url)).apply {
           flags = Intent.FLAG_ACTIVITY_NEW_TASK
@@ -248,7 +265,6 @@ private fun handleCustomUrlIntents(context: Context, url: String): Boolean {
         true
       }
 
-      // Email links
       url.startsWith("mailto:") -> {
         val mailIntent = Intent(Intent.ACTION_SENDTO, Uri.parse(url)).apply {
           flags = Intent.FLAG_ACTIVITY_NEW_TASK
@@ -257,21 +273,17 @@ private fun handleCustomUrlIntents(context: Context, url: String): Boolean {
         true
       }
 
-      // Allow file and internal web views to load inside WebView
       url.startsWith("file:///android_asset/") || url.startsWith("https://nahralelm-library.com") -> {
         false
       }
 
-      // External links
       url.startsWith("http://") || url.startsWith("https://") -> {
         false
       }
 
-      else -> {
-        false
-      }
+      else -> false
     }
-  } catch (e: Exception) {
+  } catch (_: Exception) {
     Toast.makeText(context, "تعذر فتح الرابط الخارجي", Toast.LENGTH_SHORT).show()
     false
   }
@@ -286,11 +298,28 @@ class AndroidNativeBridge(private val context: Context) {
   fun isNativeApp(): Boolean = true
 
   @JavascriptInterface
-  fun getAppVersion(): String = "1.0.0"
+  fun getAppVersion(): String = "2.0.0"
 
   @JavascriptInterface
   fun showToast(message: String) {
     Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+  }
+
+  @JavascriptInterface
+  fun shareLibraryLink(title: String, text: String, url: String) {
+    try {
+      val shareIntent = Intent(Intent.ACTION_SEND).apply {
+        type = "text/plain"
+        putExtra(Intent.EXTRA_SUBJECT, title)
+        putExtra(Intent.EXTRA_TEXT, "$text\n$url")
+      }
+      val chooser = Intent.createChooser(shareIntent, title).apply {
+        flags = Intent.FLAG_ACTIVITY_NEW_TASK
+      }
+      context.startActivity(chooser)
+    } catch (_: Exception) {
+      Toast.makeText(context, "تعذر فتح نافذة المشاركة", Toast.LENGTH_SHORT).show()
+    }
   }
 
   @JavascriptInterface

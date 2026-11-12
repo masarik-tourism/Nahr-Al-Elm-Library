@@ -4,7 +4,7 @@
  * Network-First Strategy for Instant Over-The-Air Caching and Resilient Offline Support
  */
 
-const CACHE_VERSION = 'nahralelm-ota-v1.0.5';
+const CACHE_VERSION = 'nahralelm-ota-v2.0.0';
 const CACHE_NAME = `nahr-alelm-cache-${CACHE_VERSION}`;
 
 // Core assets required for initial offline bootstrap

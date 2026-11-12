@@ -1,20 +1,21 @@
 /**
  * =========================================================================
  * مكتبة نهر العلم - إدارة أ/ إيهاب (Nahr Al-Elm Library)
- * المحرك البرمجي المتكامل:
- * 1. قاعدة بيانات الكتب والأسعار والمستلزمات الدراسية
- * 2. المزامنة السحابية اللحظية عبر Firebase Realtime Database
- * 3. نظام الفلترة التعليمية الثلاثي (المرحلة -> الصف -> المادة)
- * 4. سلة الطلبات الذكية وإرسال الطلبات المجمعة عبر الواتساب (01002968331)
- * 5. حاسبة خدمة اطبع مذكرتك الفورية
- * 6. بوابة الدخول السري (ضغط مطول 3 ثوانٍ) ولوحة تحكم المهندس محمد يوسف
- * 7. لوحة الإدارة وتعديل الأسعار وتوليد كشوفات الـ PDF
+ * المحرك البرمجي المتكامل (الإصدار 2.0.0)
+ * -------------------------------------------------------------------------
+ * 1. إعدادات فايربيس (Firebase Realtime Database) في أعلى الملف
+ * 2. بيانات أولية شاملة (Seed Data) لمنع ظهور المتجر فارغاً أبداً
+ * 3. شريط البحث الفوري + الأقسام الستة + الفلاتر المشروطة (الكتب والسبلايز)
+ * 4. عرض البطاقات المتجاوبة بالصور وقسم العروض والخصومات (Hot Deals)
+ * 5. حاسبة طباعة المذكرات التلقائية باستخدام مكتبة PDF.js
+ * 6. سلة الطلبات الذكية مع خيار الاستلام أو التوصيل للمنزل عبر الواتساب
+ * 7. بوابة الدخول السرية (ضغط مطول 3 ثوانٍ) وحقن لوحة الإدارة ديناميكياً
  * =========================================================================
  */
 
 // =========================================================================
 // 1. إعدادات فايربيس (Firebase Realtime Database Configuration)
-// ضع مفاتيح وبيانات مشروع فايربيس هنا للمزامنة السحابية الحية
+// قم بتعبئة بيانات مشروع Firebase الحقيقية هنا لتفعيل المزامنة السحابية الفورية
 // =========================================================================
 const firebaseConfig = {
   apiKey: "AIzaSy_YOUR_API_KEY_HERE",
@@ -26,696 +27,968 @@ const firebaseConfig = {
   appId: "1:1234567890:web:abcdef"
 };
 
-// رقم هاتف الواتساب المعتمد للمكتبة
+// رقم الواتساب المعتمد للمكتبة ومفاتيح التخزين المحلي
 const STORE_WHATSAPP_NUMBER = "201002968331";
+const STORE_PUBLIC_URL = "https://masarik-tourism.github.io/Nahr-Al-Elm-Library/";
+const STORAGE_KEYS = {
+  BOOKS: "nahralelm_books_v2",
+  RATES: "nahralelm_print_rates_v2",
+  BANNER: "nahralelm_announcement_v2",
+  CART: "nahralelm_cart_v2"
+};
 
-// بصمة التشفير الآمنة لكلمة مرور الإدارة (SHA-256 لـ Hoor#271022)
-// لحماية كلمة المرور من الكشف عبر Inspect Element في المتصفح
-const ADMIN_PASSWORD_HASH = "0ae35671515b2138c71e24c2726005def772b17f3ab02568b4b586f554babeb4";
+// =========================================================================
+// 2. البيانات الأولية المدمجة (Seed Data)
+// تظهر تلقائياً إذا كانت قاعدة بيانات Firebase فارغة أو غير متصلة
+// =========================================================================
+const DEFAULT_BOOKS = [
+  // ---------------- الكتب الخارجية (books) ----------------
+  {
+    id: "bk-01",
+    title: "كتاب سلاح التلميذ - اللغة العربية",
+    category: "books",
+    stage: "ابتدائي",
+    grade: "الصف الرابع الابتدائي",
+    subject: "لغة عربية",
+    series: "سلاح التلميذ",
+    price: 155,
+    originalPrice: 175,
+    stock: "متوفر بالمكتبة",
+    badge: "الأكثر طلباً",
+    imageUrl: "",
+    isHotDeal: false,
+    clicks: 64
+  },
+  {
+    id: "bk-02",
+    title: "كتاب سلاح التلميذ - الرياضيات",
+    category: "books",
+    stage: "ابتدائي",
+    grade: "الصف السادس الابتدائي",
+    subject: "رياضيات",
+    series: "سلاح التلميذ",
+    price: 165,
+    originalPrice: null,
+    stock: "متوفر بالمكتبة",
+    badge: "الشهادة الابتدائية",
+    imageUrl: "",
+    isHotDeal: false,
+    clicks: 52
+  },
+  {
+    id: "bk-03",
+    title: "كتاب الأضواء - اللغة العربية",
+    category: "books",
+    stage: "ابتدائي",
+    grade: "الصف الخامس الابتدائي",
+    subject: "لغة عربية",
+    series: "الأضواء",
+    price: 160,
+    originalPrice: null,
+    stock: "متوفر بالمكتبة",
+    badge: "معتمد",
+    imageUrl: "",
+    isHotDeal: false,
+    clicks: 41
+  },
+  {
+    id: "bk-04",
+    title: "كتاب المعاصر - الرياضيات (Math)",
+    category: "books",
+    stage: "إعدادي",
+    grade: "الصف الثالث الإعدادي",
+    subject: "رياضيات",
+    series: "المعاصر",
+    price: 190,
+    originalPrice: 210,
+    stock: "متوفر بالمكتبة",
+    badge: "جبر وهندسة",
+    imageUrl: "",
+    isHotDeal: false,
+    clicks: 79
+  },
+  {
+    id: "bk-05",
+    title: "كتاب الامتحان - اللغة العربية",
+    category: "books",
+    stage: "إعدادي",
+    grade: "الصف الثالث الإعدادي",
+    subject: "لغة عربية",
+    series: "الامتحان",
+    price: 185,
+    originalPrice: null,
+    stock: "متوفر بالمكتبة",
+    badge: "شهادة إعدادية",
+    imageUrl: "",
+    isHotDeal: false,
+    clicks: 85
+  },
+  {
+    id: "bk-06",
+    title: "كتاب الامتحان - العلوم المتكاملة",
+    category: "books",
+    stage: "إعدادي",
+    grade: "الصف الأول الإعدادي",
+    subject: "علوم",
+    series: "الامتحان",
+    price: 170,
+    originalPrice: null,
+    stock: "متوفر بالمكتبة",
+    badge: "منهج مطور",
+    imageUrl: "",
+    isHotDeal: false,
+    clicks: 48
+  },
+  {
+    id: "bk-07",
+    title: "كتاب المعاصر - اللغة الإنجليزية (New Hello)",
+    category: "books",
+    stage: "إعدادي",
+    grade: "الصف الثاني الإعدادي",
+    subject: "لغة إنجليزية",
+    series: "المعاصر",
+    price: 175,
+    originalPrice: null,
+    stock: "متوفر بالمكتبة",
+    badge: "شامل المراجعة",
+    imageUrl: "",
+    isHotDeal: false,
+    clicks: 39
+  },
+  {
+    id: "bk-08",
+    title: "كتاب الامتحان - اللغة العربية (الثانوية العامة)",
+    category: "books",
+    stage: "ثانوي",
+    grade: "الصف الثالث الثانوي",
+    subject: "لغة عربية",
+    series: "الامتحان",
+    price: 240,
+    originalPrice: 265,
+    stock: "متوفر كميات",
+    badge: "ثانوية عامة",
+    imageUrl: "",
+    isHotDeal: false,
+    clicks: 98
+  },
+  {
+    id: "bk-09",
+    title: "كتاب نيوتن في الفيزياء (شرح وبنك أسئلة)",
+    category: "books",
+    stage: "ثانوي",
+    grade: "الصف الثالث الثانوي",
+    subject: "فيزياء",
+    series: "نيوتن",
+    price: 230,
+    originalPrice: null,
+    stock: "متوفر كميات",
+    badge: "الأقوى بالفيزياء",
+    imageUrl: "",
+    isHotDeal: false,
+    clicks: 112
+  },
+  {
+    id: "bk-10",
+    title: "كتاب الوافي في الكيمياء",
+    category: "books",
+    stage: "ثانوي",
+    grade: "الصف الثالث الثانوي",
+    subject: "كيمياء",
+    series: "الوافي",
+    price: 220,
+    originalPrice: null,
+    stock: "متوفر بالمكتبة",
+    badge: "تالتة ثانوي",
+    imageUrl: "",
+    isHotDeal: false,
+    clicks: 73
+  },
 
-// الحسابات والملفات الشخصية المعتمدة للمنظومة
-const SYSTEM_PROFILES = [
-  "Engineer Mohamed Youssef",
+  // ---------------- باكدجات السبلايز (supplies) - عروض وخصومات ----------------
+  {
+    id: "sup-01",
+    title: "باكدج سبلايز كي جي المتكامل (KG1 & KG2)",
+    category: "supplies",
+    stage: "كي جي",
+    grade: "رياض الأطفال (KG)",
+    subject: "تأسيس وأنشطة",
+    series: "عروض نهر العلم",
+    price: 295,
+    originalPrice: 360,
+    stock: "متوفر بالمكتبة",
+    badge: "خصم 18%",
+    imageUrl: "",
+    isHotDeal: true,
+    clicks: 91
+  },
+  {
+    id: "sup-02",
+    title: "باكدج السبلايز الذهبي للمرحلة الابتدائية (12 كراسة + أقلام + ألوان)",
+    category: "supplies",
+    stage: "ابتدائي",
+    grade: "من الأول إلى السادس الابتدائي",
+    subject: "كافة المواد",
+    series: "عروض نهر العلم",
+    price: 340,
+    originalPrice: 420,
+    stock: "متوفر بالمكتبة",
+    badge: "عرض توفير 19%",
+    imageUrl: "",
+    isHotDeal: true,
+    clicks: 105
+  },
+  {
+    id: "sup-03",
+    title: "باكدج سبلايز المرحلة الإعدادية (كشاكيل سلك + هندسة + أقلام)",
+    category: "supplies",
+    stage: "إعدادي",
+    grade: "من الأول إلى الثالث الإعدادي",
+    subject: "مجموعة متكاملة",
+    series: "عروض نهر العلم",
+    price: 385,
+    originalPrice: 460,
+    stock: "متوفر بالمكتبة",
+    badge: "خصم 16%",
+    imageUrl: "",
+    isHotDeal: true,
+    clicks: 76
+  },
+  {
+    id: "sup-04",
+    title: "باكدج الثانوية العامة الشامل (كشاكيل جامعية + هايلايتر + نوت)",
+    category: "supplies",
+    stage: "ثانوي",
+    grade: "المرحلة الثانوية",
+    subject: "تنظيم ومذاكرة",
+    series: "عروض نهر العلم",
+    price: 425,
+    originalPrice: 510,
+    stock: "كمية محدودة",
+    badge: "الأكثر مبيعاً",
+    imageUrl: "",
+    isHotDeal: true,
+    clicks: 84
+  },
+
+  // ---------------- الأدوات المكتبية والكراريس (stationery) ----------------
+  {
+    id: "st-01",
+    title: "دسته كراسات مسطرة 28 ورقة (10 كراسات) ورق فاخر",
+    category: "stationery",
+    stage: "عام",
+    grade: "جميع المراحل",
+    subject: "كراريس",
+    series: "نهر العلم",
+    price: 85,
+    originalPrice: 100,
+    stock: "متوفر بالمكتبة",
+    badge: "عرض الدستة",
+    imageUrl: "",
+    isHotDeal: true,
+    clicks: 59
+  },
+  {
+    id: "st-02",
+    title: "كشكول سلك 100 ورقة مسطر غلاف مقوى (مجموعة 5 قطع)",
+    category: "stationery",
+    stage: "عام",
+    grade: "إعدادي وثانوي",
+    subject: "كشاكيل",
+    series: "برافو",
+    price: 120,
+    originalPrice: null,
+    stock: "متوفر بالمكتبة",
+    badge: "خامة ممتازة",
+    imageUrl: "",
+    isHotDeal: false,
+    clicks: 47
+  },
+  {
+    id: "st-03",
+    title: "علبة أقلام جاف أزرق سريعة الجفاف (12 قلم)",
+    category: "stationery",
+    stage: "عام",
+    grade: "جميع المراحل",
+    subject: "أقلام",
+    series: "روتو / بريما",
+    price: 60,
+    originalPrice: null,
+    stock: "متوفر بالمكتبة",
+    badge: "خط ناعم",
+    imageUrl: "",
+    isHotDeal: false,
+    clicks: 66
+  },
+  {
+    id: "st-04",
+    title: "طقم أدوات هندسية معدني كامل مع برجل دقيق",
+    category: "stationery",
+    stage: "عام",
+    grade: "ابتدائي وإعدادي",
+    subject: "أدوات هندسية",
+    series: "مابل / ديلي",
+    price: 75,
+    originalPrice: null,
+    stock: "متوفر بالمكتبة",
+    badge: "مقاوم للكسر",
+    imageUrl: "",
+    isHotDeal: false,
+    clicks: 43
+  },
+  {
+    id: "st-05",
+    title: "علبة ألوان فلوماستر وألوان خشب 24 لون قابلة للغسل",
+    category: "stationery",
+    stage: "عام",
+    grade: "كي جي وابتدائي",
+    subject: "رسم وفنون",
+    series: "فابر كاستل",
+    price: 110,
+    originalPrice: 130,
+    stock: "متوفر بالمكتبة",
+    badge: "آمن للأطفال",
+    imageUrl: "",
+    isHotDeal: false,
+    clicks: 38
+  },
+  {
+    id: "st-06",
+    title: "رزمة ورق تصوير A4 أبيض ناصع 80 جرام (500 ورقة)",
+    category: "stationery",
+    stage: "عام",
+    grade: "مكاتب ومنازل",
+    subject: "ورق طباعة",
+    series: "إكسترا",
+    price: 195,
+    originalPrice: null,
+    stock: "متوفر بالمكتبة",
+    badge: "جودة عالية",
+    imageUrl: "",
+    isHotDeal: false,
+    clicks: 54
+  },
+
+  // ---------------- الهدايا والألعاب (gifts) ----------------
+  {
+    id: "gf-01",
+    title: "لعبة مكعبات الذكاء الهندسية لتنمية مهارات الطفل (100 قطعة)",
+    category: "gifts",
+    stage: "عام",
+    grade: "من 3 إلى 10 سنوات",
+    subject: "تنمية مهارات",
+    series: "ألعاب ذكاء",
+    price: 185,
+    originalPrice: 220,
+    stock: "متوفر بالمكتبة",
+    badge: "هدية تعليمية",
+    imageUrl: "",
+    isHotDeal: true,
+    clicks: 62
+  },
+  {
+    id: "gf-02",
+    title: "سبورة تعليمية ذكية مزدوجة (مغناطيسية + طباشير) مع الحروف",
+    category: "gifts",
+    stage: "عام",
+    grade: "كي جي وابتدائي",
+    subject: "تعليم مرح",
+    series: "نهر العلم",
+    price: 210,
+    originalPrice: null,
+    stock: "متوفر بالمكتبة",
+    badge: "شامل الحروف",
+    imageUrl: "",
+    isHotDeal: false,
+    clicks: 49
+  },
+  {
+    id: "gf-03",
+    title: "بوكس هدايا التفوق والنجاح (مج مطبوع + نوت بوك + قلم فخم)",
+    category: "gifts",
+    stage: "عام",
+    grade: "للمتفوقين",
+    subject: "هدايا مناسبات",
+    series: "هدايا نهر العلم",
+    price: 190,
+    originalPrice: 230,
+    stock: "متوفر بالمكتبة",
+    badge: "تغليف فاخر",
+    imageUrl: "",
+    isHotDeal: true,
+    clicks: 57
+  },
+  {
+    id: "gf-04",
+    title: "بازل خشبي تعليمي للحروف العربية والأرقام والأشكال",
+    category: "gifts",
+    stage: "عام",
+    grade: "مرحلة التأسيس",
+    subject: "ألعاب خشبية",
+    series: "ألعاب ذكاء",
+    price: 95,
+    originalPrice: null,
+    stock: "متوفر بالمكتبة",
+    badge: "خشب آمن",
+    imageUrl: "",
+    isHotDeal: false,
+    clicks: 35
+  },
+
+  // ---------------- خدمات الطباعة (printing) ----------------
+  {
+    id: "pr-01",
+    title: "باقة طباعة مذكرة كاملة (حتى 100 صفحة ليزر + تغليف سلك حديد)",
+    category: "printing",
+    stage: "عام",
+    grade: "كافة المراحل",
+    subject: "طباعة وتغليف",
+    series: "مطبعة نهر العلم",
+    price: 90,
+    originalPrice: 105,
+    stock: "تسليم فوري",
+    badge: "عرض المذكرات",
+    imageUrl: "",
+    isHotDeal: true,
+    clicks: 74
+  },
+  {
+    id: "pr-02",
+    title: "باقة طباعة أبحاث ولوحات ألوان عالية الجودة (20 صفحة + كعب بلاستيك)",
+    category: "printing",
+    stage: "عام",
+    grade: "طلاب وجامعات",
+    subject: "طباعة ألوان",
+    series: "مطبعة نهر العلم",
+    price: 60,
+    originalPrice: null,
+    stock: "تسليم فوري",
+    badge: "دقة فائقة",
+    imageUrl: "",
+    isHotDeal: false,
+    clicks: 42
+  }
+];
+
+// تسعيرة الطباعة الافتراضية
+const DEFAULT_PRINT_RATES = {
+  bwPage: 0.75,
+  colorPage: 2.50,
+  bindingStaple: 3.00,
+  bindingPlastic: 15.00,
+  bindingWire: 25.00
+};
+
+// إعلان الشريط العلوي الافتراضي
+const DEFAULT_ANNOUNCEMENT = {
+  text: "أهلاً بكم في مكتبة نهر العلم (إدارة أ/ إيهاب) - كافة الكتب الخارجية وباكدجات السبلايز متوفرة الآن بأسعار محدثة وخصومات بداية العام.",
+  badge: "عروض العام الجديد",
+  bannerImageUrl: "",
+  active: true
+};
+
+// تسميات الأقسام بالعربية
+const CATEGORY_TITLES = {
+  all: "جميع منتجات وخدمات مكتبة نهر العلم",
+  books: "الكتب الخارجية المعتمدة",
+  stationery: "الأدوات المكتبية والكراريس",
+  supplies: "باكدجات السبلايز المدرسية",
+  gifts: "الهدايا وألعاب تنمية المهارات",
+  printing: "خدمات الطباعة والتصوير الفوري"
+};
+
+// =========================================================================
+// 3. إدارة الحالة الداخلية للتطبيق (Application State)
+// =========================================================================
+let currentBooks = [];
+let currentPrintRates = { ...DEFAULT_PRINT_RATES };
+let currentAnnouncement = { ...DEFAULT_ANNOUNCEMENT };
+let cartItems = [];
+let activeCategory = "all";
+let searchQuery = "";
+let firebaseDb = null;
+let deferredInstallPrompt = null;
+let failedLoginAttempts = 0;
+let isAdminAuthenticated = false;
+let activeAdminProfile = "";
+
+// =========================================================================
+// 4. دوال الأمان والتشفير والتحقق الإداري الخفي
+// =========================================================================
+const _A_H = "0ae35671515b2138c71e24c2726005def772b17f3ab02568b4b586f554babeb4";
+const _P_LIST = [
   "Mohamed Youssef",
   "programmer Mohamed Youssef",
   "programmer Mohamed Hassan",
   "Ghala Mohamed Youssef"
 ];
 
-// =========================================================================
-// 2. الكتالوج التعليمي الشامل وقائمة الأسعار الافتراضية
-// =========================================================================
-const DEFAULT_BOOKS = [
-  // --- المرحلة الابتدائية ---
-  {
-    id: "b-prim-01",
-    title: "سلاح التلميذ - لغة عربية",
-    stage: "ابتدائي",
-    grade: "الصف الأول الابتدائي",
-    subject: "لغة عربية",
-    series: "سلاح التلميذ",
-    price: 135,
-    stock: "متوفر بالمكتبة",
-    badge: "الأكثر طلباً",
-    icon: "fa-book-open",
-    clicks: 42
-  },
-  {
-    id: "b-prim-02",
-    title: "المعاصر - الرياضيات (Math)",
-    stage: "ابتدائي",
-    grade: "الصف الأول الابتدائي",
-    subject: "رياضيات",
-    series: "المعاصر",
-    price: 150,
-    stock: "متوفر بالمكتبة",
-    badge: "لغات وعربي",
-    icon: "fa-calculator",
-    clicks: 38
-  },
-  {
-    id: "b-prim-03",
-    title: "سلاح التلميذ - لغة عربية",
-    stage: "ابتدائي",
-    grade: "الصف الثاني الابتدائي",
-    subject: "لغة عربية",
-    series: "سلاح التلميذ",
-    price: 140,
-    stock: "متوفر بالمكتبة",
-    badge: "معتمد",
-    icon: "fa-book",
-    clicks: 25
-  },
-  {
-    id: "b-prim-04",
-    title: "المعاصر - كونكت (Connect)",
-    stage: "ابتدائي",
-    grade: "الصف الثاني الابتدائي",
-    subject: "لغة إنجليزية",
-    series: "المعاصر",
-    price: 155,
-    stock: "متوفر بالمكتبة",
-    badge: "إنجليزي",
-    icon: "fa-spell-check",
-    clicks: 30
-  },
-  {
-    id: "b-prim-05",
-    title: "الأضواء - لغة عربية",
-    stage: "ابتدائي",
-    grade: "الصف الثالث الابتدائي",
-    subject: "لغة عربية",
-    series: "الأضواء",
-    price: 145,
-    stock: "متوفر بالمكتبة",
-    badge: "متميز",
-    icon: "fa-book-open",
-    clicks: 22
-  },
-  {
-    id: "b-prim-06",
-    title: "سلاح التلميذ - رياضيات",
-    stage: "ابتدائي",
-    grade: "الصف الثالث الابتدائي",
-    subject: "رياضيات",
-    series: "سلاح التلميذ",
-    price: 145,
-    stock: "متوفر بالمكتبة",
-    badge: "الأكثر طلباً",
-    icon: "fa-shapes",
-    clicks: 34
-  },
-  {
-    id: "b-prim-07",
-    title: "سلاح التلميذ - دراسات اجتماعية",
-    stage: "ابتدائي",
-    grade: "الصف الرابع الابتدائي",
-    subject: "دراسات اجتماعية",
-    series: "سلاح التلميذ",
-    price: 155,
-    stock: "متوفر بالمكتبة",
-    badge: "منهج جديد",
-    icon: "fa-earth-africa",
-    clicks: 45
-  },
-  {
-    id: "b-prim-08",
-    title: "سلاح التلميذ - علوم (Science)",
-    stage: "ابتدائي",
-    grade: "الصف الرابع الابتدائي",
-    subject: "علوم",
-    series: "سلاح التلميذ",
-    price: 155,
-    stock: "متوفر بالمكتبة",
-    badge: "شامل الأنشطة",
-    icon: "fa-flask",
-    clicks: 40
-  },
-  {
-    id: "b-prim-09",
-    title: "المعاصر - الرياضيات (Math)",
-    stage: "ابتدائي",
-    grade: "الصف الخامس الابتدائي",
-    subject: "رياضيات",
-    series: "المعاصر",
-    price: 165,
-    stock: "متوفر بالمكتبة",
-    badge: "لغات وعربي",
-    icon: "fa-calculator",
-    clicks: 49
-  },
-  {
-    id: "b-prim-10",
-    title: "الأضواء - لغة عربية",
-    stage: "ابتدائي",
-    grade: "الصف الخامس الابتدائي",
-    subject: "لغة عربية",
-    series: "الأضواء",
-    price: 160,
-    stock: "متوفر بالمكتبة",
-    badge: "معتمد",
-    icon: "fa-book",
-    clicks: 28
-  },
-  {
-    id: "b-prim-11",
-    title: "سلاح التلميذ - لغة عربية",
-    stage: "ابتدائي",
-    grade: "الصف السادس الابتدائي",
-    subject: "لغة عربية",
-    series: "سلاح التلميذ",
-    price: 165,
-    stock: "متوفر بالمكتبة",
-    badge: "الشهادة الابتدائية",
-    icon: "fa-graduation-cap",
-    clicks: 65
-  },
-  {
-    id: "b-prim-12",
-    title: "سلاح التلميذ - دراسات اجتماعية",
-    stage: "ابتدائي",
-    grade: "الصف السادس الابتدائي",
-    subject: "دراسات اجتماعية",
-    series: "سلاح التلميذ",
-    price: 160,
-    stock: "متوفر بالمكتبة",
-    badge: "أطلس ملون",
-    icon: "fa-map",
-    clicks: 39
-  },
-
-  // --- المرحلة الإعدادية ---
-  {
-    id: "b-prep-01",
-    title: "الامتحان - لغة عربية (شرح + امتحانات)",
-    stage: "إعدادي",
-    grade: "الصف الأول الإعدادي",
-    subject: "لغة عربية",
-    series: "الامتحان",
-    price: 170,
-    stock: "متوفر بالمكتبة",
-    badge: "الأكثر طلباً",
-    icon: "fa-book-bookmark",
-    clicks: 58
-  },
-  {
-    id: "b-prep-02",
-    title: "المعاصر - الرياضيات (جبر وهندسة)",
-    stage: "إعدادي",
-    grade: "الصف الأول الإعدادي",
-    subject: "رياضيات",
-    series: "المعاصر",
-    price: 175,
-    stock: "متوفر بالمكتبة",
-    badge: "جبر وهندسة",
-    icon: "fa-square-root-variable",
-    clicks: 52
-  },
-  {
-    id: "b-prep-03",
-    title: "الامتحان - علوم",
-    stage: "إعدادي",
-    grade: "الصف الأول الإعدادي",
-    subject: "علوم",
-    series: "الامتحان",
-    price: 165,
-    stock: "متوفر بالمكتبة",
-    badge: "معتمد",
-    icon: "fa-atom",
-    clicks: 36
-  },
-  {
-    id: "b-prep-04",
-    title: "الامتحان - دراسات اجتماعية",
-    stage: "إعدادي",
-    grade: "الصف الثاني الإعدادي",
-    subject: "دراسات اجتماعية",
-    series: "الامتحان",
-    price: 170,
-    stock: "متوفر بالمكتبة",
-    badge: "تاريخ وجغرافيا",
-    icon: "fa-landmark",
-    clicks: 44
-  },
-  {
-    id: "b-prep-05",
-    title: "المعاصر - لغة إنجليزية (New Hello)",
-    stage: "إعدادي",
-    grade: "الصف الثاني الإعدادي",
-    subject: "لغة إنجليزية",
-    series: "المعاصر",
-    price: 175,
-    stock: "متوفر بالمكتبة",
-    badge: "متميز",
-    icon: "fa-language",
-    clicks: 41
-  },
-  {
-    id: "b-prep-06",
-    title: "الامتحان - لغة عربية (الشهادة الإعدادية)",
-    stage: "إعدادي",
-    grade: "الصف الثالث الإعدادي",
-    subject: "لغة عربية",
-    series: "الامتحان",
-    price: 185,
-    stock: "متوفر بالمكتبة",
-    badge: "شهادة إعدادية",
-    icon: "fa-award",
-    clicks: 85
-  },
-  {
-    id: "b-prep-07",
-    title: "المعاصر - الرياضيات (جبر وإحصاء وحساب مثلثات)",
-    stage: "إعدادي",
-    grade: "الصف الثالث الإعدادي",
-    subject: "رياضيات",
-    series: "المعاصر",
-    price: 190,
-    stock: "متوفر بالمكتبة",
-    badge: "شامل الامتحانات",
-    icon: "fa-calculator",
-    clicks: 79
-  },
-  {
-    id: "b-prep-08",
-    title: "الامتحان - علوم متكاملة",
-    stage: "إعدادي",
-    grade: "الصف الثالث الإعدادي",
-    subject: "علوم",
-    series: "الامتحان",
-    price: 175,
-    stock: "متوفر بالمكتبة",
-    badge: "بنك الأسئلة",
-    icon: "fa-flask-vial",
-    clicks: 63
-  },
-
-  // --- المرحلة الثانوية ---
-  {
-    id: "b-sec-01",
-    title: "الامتحان - لغة عربية (الصف الأول الثانوي)",
-    stage: "ثانوي",
-    grade: "الصف الأول الثانوي",
-    subject: "لغة عربية",
-    series: "الامتحان",
-    price: 195,
-    stock: "متوفر بالمكتبة",
-    badge: "أولى ثانوي",
-    icon: "fa-book-atlas",
-    clicks: 60
-  },
-  {
-    id: "b-sec-02",
-    title: "كتاب نيوتن في الفيزياء (شرح وتدريبات)",
-    stage: "ثانوي",
-    grade: "الصف الأول الثانوي",
-    subject: "فيزياء",
-    series: "نيوتن",
-    price: 185,
-    stock: "متوفر بالمكتبة",
-    badge: "فيزياء حديثة",
-    icon: "fa-bolt",
-    clicks: 48
-  },
-  {
-    id: "b-sec-03",
-    title: "الامتحان - كيمياء",
-    stage: "ثانوي",
-    grade: "الصف الأول الثانوي",
-    subject: "كيمياء",
-    series: "الامتحان",
-    price: 180,
-    stock: "متوفر بالمكتبة",
-    badge: "معتمد",
-    icon: "fa-vial",
-    clicks: 45
-  },
-  {
-    id: "b-sec-04",
-    title: "الامتحان - أحياء",
-    stage: "ثانوي",
-    grade: "الصف الثاني الثانوي",
-    subject: "أحياء",
-    series: "الامتحان",
-    price: 185,
-    stock: "متوفر بالمكتبة",
-    badge: "علمي",
-    icon: "fa-dna",
-    clicks: 53
-  },
-  {
-    id: "b-sec-05",
-    title: "الامتحان - تاريخ وجغرافيا",
-    stage: "ثانوي",
-    grade: "الصف الثاني الثانوي",
-    subject: "دراسات اجتماعية",
-    series: "الامتحان",
-    price: 190,
-    stock: "متوفر بالمكتبة",
-    badge: "أدبي",
-    icon: "fa-monument",
-    clicks: 37
-  },
-  {
-    id: "b-sec-06",
-    title: "الامتحان - لغة عربية (الثانوية العامة)",
-    stage: "ثانوي",
-    grade: "الصف الثالث الثانوي",
-    subject: "لغة عربية",
-    series: "الامتحان",
-    price: 240,
-    stock: "متوفر كميات",
-    badge: "ثانوية عامة",
-    icon: "fa-award",
-    clicks: 98
-  },
-  {
-    id: "b-sec-07",
-    title: "كتاب نيوتن في الفيزياء (بنك الأسئلة والبوكليت)",
-    stage: "ثانوي",
-    grade: "الصف الثالث الثانوي",
-    subject: "فيزياء",
-    series: "نيوتن",
-    price: 230,
-    stock: "متوفر كميات",
-    badge: "الأقوى في الفيزياء",
-    icon: "fa-bolt",
-    clicks: 110
-  },
-  {
-    id: "b-sec-08",
-    title: "الوافي في الكيمياء (الثانوية العامة)",
-    stage: "ثانوي",
-    grade: "الصف الثالث الثانوي",
-    subject: "كيمياء",
-    series: "الوافي",
-    price: 220,
-    stock: "متوفر بالمكتبة",
-    badge: "كيمياء 3 ثانوي",
-    icon: "fa-flask",
-    clicks: 72
-  },
-  {
-    id: "b-sec-09",
-    title: "المعاصر في الرياضيات البحتة والتطبيقية",
-    stage: "ثانوي",
-    grade: "الصف الثالث الثانوي",
-    subject: "رياضيات",
-    series: "المعاصر",
-    price: 250,
-    stock: "متوفر بالمكتبة",
-    badge: "علمي رياضة",
-    icon: "fa-calculator",
-    clicks: 88
-  },
-
-  // --- خدمات وأدوات أخرى ---
-  {
-    id: "b-oth-01",
-    title: "باكدج كشاكيل سلك 80 ورقة (مجموعة 5 قطع)",
-    stage: "أخرى",
-    grade: "كافة الصفوف",
-    subject: "أدوات مدرسية",
-    series: "أدوات نهر العلم",
-    price: 95,
-    stock: "متوفر بالمكتبة",
-    badge: "عرض خاص",
-    icon: "fa-pen-ruler",
-    clicks: 31
-  },
-  {
-    id: "b-oth-02",
-    title: "طقم أدوات هندسية متكامل مع برجل فاخر",
-    stage: "أخرى",
-    grade: "إعدادي وثانوي",
-    subject: "أدوات هندسية",
-    series: "أدوات نهر العلم",
-    price: 65,
-    stock: "متوفر بالمكتبة",
-    badge: "دقيق وفاخر",
-    icon: "fa-compass-drafting",
-    clicks: 29
-  },
-  {
-    id: "b-oth-03",
-    title: "باكيت ورق تصوير A4 أبيض فاخر (80 جرام - 500 ورقة)",
-    stage: "أخرى",
-    grade: "للمكاتب والطلاب",
-    subject: "ورق طباعة",
-    series: "أدوات نهر العلم",
-    price: 185,
-    stock: "متوفر بالمكتبة",
-    badge: "جودة أصلية",
-    icon: "fa-file",
-    clicks: 44
+// دالة SHA-256 تدعم Web Crypto وتضم بديلاً نقياً لبيئات HTTP المحلية
+async function computeSha256(message) {
+  if (window.crypto && window.crypto.subtle) {
+    try {
+      const msgUint8 = new TextEncoder().encode(message);
+      const hashBuffer = await window.crypto.subtle.digest("SHA-256", msgUint8);
+      return Array.from(new Uint8Array(hashBuffer))
+        .map((b) => b.toString(16).padStart(2, "0"))
+        .join("");
+    } catch (_) {
+      // المتابعة للبديل البرمجي
+    }
   }
-];
+  return pureJsSha256(message);
+}
 
-// تسعيرة خدمات الطباعة والتجليد الافتراضية
-const DEFAULT_PRINT_RATES = {
-  bwPage: 0.75,         // سعر صفحة أبيض وأسود
-  colorPage: 2.50,      // سعر صفحة ألوان
-  bindingStaple: 3.00,  // سعر تدبيس
-  bindingPlastic: 15.00,// سعر تغليف بلاستيك
-  bindingWire: 25.00    // سعر تغليف سلك فاخر
-};
-
-// إعلان الشريط العلوي الافتراضي
-const DEFAULT_ANNOUNCEMENT = {
-  text: "أهلاً بكم في مكتبة نهر العلم - وصول دفعة جديدة من كتب سلاح التلميذ والمعاصر والامتحان لكافة المراحل بأسعار معتمدة ومحدثة.",
-  badge: "تنويه عاجل",
-  active: true
-};
+function pureJsSha256(ascii) {
+  function rightRotate(value, amount) {
+    return (value >>> amount) | (value << (32 - amount));
+  }
+  const mathPow = Math.pow;
+  const maxWord = mathPow(2, 32);
+  const lengthProperty = "length";
+  let i, j;
+  let result = "";
+  const words = [];
+  const asciiBitLength = ascii[lengthProperty] * 8;
+  let hash = (pureJsSha256.h = pureJsSha256.h || []);
+  const k = (pureJsSha256.k = pureJsSha256.k || []);
+  let primeCounter = k[lengthProperty];
+  const isComposite = {};
+  for (let candidate = 2; primeCounter < 64; candidate++) {
+    if (!isComposite[candidate]) {
+      for (i = 0; i < 313; i += candidate) {
+        isComposite[i] = candidate;
+      }
+      hash[primeCounter] = (mathPow(candidate, 0.5) * maxWord) | 0;
+      k[primeCounter++] = (mathPow(candidate, 1 / 3) * maxWord) | 0;
+    }
+  }
+  ascii += "\x80";
+  while ((ascii[lengthProperty] % 64) - 56) ascii += "\x00";
+  for (i = 0; i < ascii[lengthProperty]; i++) {
+    j = ascii.charCodeAt(i);
+    if (j >> 8) return "";
+    words[i >> 2] |= j << (((3 - i) % 4) * 8);
+  }
+  words[words[lengthProperty]] = (asciiBitLength / maxWord) | 0;
+  words[words[lengthProperty]] = asciiBitLength;
+  for (j = 0; j < words[lengthProperty]; ) {
+    const w = words.slice(j, (j += 16));
+    const oldHash = hash;
+    hash = hash.slice(0, 8);
+    for (i = 0; i < 64; i++) {
+      const w15 = w[i - 15], w2 = w[i - 2];
+      const a = hash[0], e = hash[4];
+      const temp1 =
+        hash[7] +
+        (rightRotate(e, 6) ^ rightRotate(e, 11) ^ rightRotate(e, 25)) +
+        ((e & hash[5]) ^ (~e & hash[6])) +
+        k[i] +
+        (w[i] =
+          i < 16
+            ? w[i]
+            : (w[i - 16] +
+                (rightRotate(w15, 7) ^ rightRotate(w15, 18) ^ (w15 >>> 3)) +
+                w[i - 7] +
+                (rightRotate(w2, 17) ^ rightRotate(w2, 19) ^ (w2 >>> 10))) |
+              0);
+      const temp2 =
+        (rightRotate(a, 2) ^ rightRotate(a, 13) ^ rightRotate(a, 22)) +
+        ((a & hash[1]) ^ (a & hash[2]) ^ (hash[1] & hash[2]));
+      hash = [(temp1 + temp2) | 0].concat(hash);
+      hash[4] = (hash[4] + temp1) | 0;
+    }
+    for (i = 0; i < 8; i++) {
+      hash[i] = (hash[i] + oldHash[i]) | 0;
+    }
+  }
+  for (i = 0; i < 8; i++) {
+    for (j = 3; j + 1; j--) {
+      const b = (hash[i] >> (j * 8)) & 255;
+      result += (b < 16 ? 0 : "") + b.toString(16);
+    }
+  }
+  return result;
+}
 
 // =========================================================================
-// 3. إدارة الحالة المحلية (State Management)
+// 5. توليد صور المنتجات الافتراضية الأنيقة (Fallback Thumbnails)
 // =========================================================================
-let currentBooks = [];
-let currentPrintRates = { ...DEFAULT_PRINT_RATES };
-let currentAnnouncement = { ...DEFAULT_ANNOUNCEMENT };
-let cartItems = [];
-let selectedSeriesFilter = "all";
-let firebaseDb = null;
-let isFirebaseConnected = false;
-let failedLoginAttempts = 0;
-let isAdminAuthenticated = false;
+function escapeHtml(str) {
+  if (str === null || str === undefined) return "";
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function getFallbackThumbnailSvg(item) {
+  const paletteMap = {
+    books: { bg1: "#0A2540", bg2: "#1E3A8A", accent: "#10B981", label: "كتاب خارجي" },
+    stationery: { bg1: "#78350F", bg2: "#D97706", accent: "#FDE68A", label: "أدوات مكتبية" },
+    supplies: { bg1: "#881337", bg2: "#E11D48", accent: "#FBBF24", label: "باكدج سبلايز" },
+    gifts: { bg1: "#4C1D95", bg2: "#7C3AED", accent: "#F472B6", label: "هدايا وألعاب" },
+    printing: { bg1: "#0C4A6E", bg2: "#0284C7", accent: "#38BDF8", label: "خدمة طباعة" }
+  };
+
+  const theme = paletteMap[item.category] || paletteMap.books;
+  const tagText = (item.series || theme.label).slice(0, 18);
+
+  const svg = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="400" height="280" viewBox="0 0 400 280">
+      <defs>
+        <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="${theme.bg1}" />
+          <stop offset="100%" stop-color="${theme.bg2}" />
+        </linearGradient>
+      </defs>
+      <rect width="400" height="280" fill="url(#g)" />
+      <circle cx="340" cy="45" r="70" fill="${theme.accent}" fill-opacity="0.14" />
+      <circle cx="55" cy="235" r="85" fill="#ffffff" fill-opacity="0.08" />
+      <rect x="135" y="55" width="130" height="105" rx="18" fill="#ffffff" fill-opacity="0.14" stroke="${theme.accent}" stroke-opacity="0.5" stroke-width="2" />
+      <path d="M168 85h64v10h-64zm0 22h64v8h-64zm0 20h42v8h-42z" fill="#ffffff" fill-opacity="0.9" />
+      <text x="200" y="202" text-anchor="middle" fill="#ffffff" font-family="Cairo, Arial, sans-serif" font-size="22" font-weight="bold">${tagText}</text>
+      <text x="200" y="232" text-anchor="middle" fill="${theme.accent}" font-family="Cairo, Arial, sans-serif" font-size="14" font-weight="bold">مكتبة نهر العلم</text>
+    </svg>
+  `.trim();
+
+  return "data:image/svg+xml;charset=UTF-8," + encodeURIComponent(svg);
+}
+
+function resolveProductImage(item) {
+  if (item.imageUrl && item.imageUrl.trim() !== "") {
+    return item.imageUrl.trim();
+  }
+  return getFallbackThumbnailSvg(item);
+}
 
 // =========================================================================
-// 4. تهيئة فايربيس وقاعدة البيانات السحابية (Firebase Realtime DB)
+// 6. تهيئة Firebase Realtime Database والمزامنة اللحظية
 // =========================================================================
 function initializeFirebase() {
   try {
-    if (typeof firebase !== "undefined" && firebaseConfig && firebaseConfig.apiKey && !firebaseConfig.apiKey.includes("YOUR_API_KEY")) {
+    const hasValidConfig =
+      typeof firebase !== "undefined" &&
+      firebaseConfig &&
+      firebaseConfig.apiKey &&
+      !firebaseConfig.apiKey.includes("YOUR_API_KEY") &&
+      firebaseConfig.databaseURL;
+
+    if (hasValidConfig) {
       if (!firebase.apps.length) {
         firebase.initializeApp(firebaseConfig);
       }
       firebaseDb = firebase.database();
-      isFirebaseConnected = true;
-      updateSyncStatusUI("سحابي متصل", true);
+      updateSyncStatusUI("متصل سحابياً", true);
       listenToFirebaseUpdates();
-      console.log("Firebase Realtime Database initialized successfully.");
     } else {
-      console.info("Firebase running in Local Persistence mode (Mock/Offline Fallback).");
-      updateSyncStatusUI("تحديث لحظي", true);
+      updateSyncStatusUI("أسعار محدثة", true);
     }
   } catch (err) {
-    console.warn("Firebase Init Notice:", err.message);
-    updateSyncStatusUI("محلي نشط", false);
+    console.warn("Firebase offline fallback active:", err.message);
+    updateSyncStatusUI("وضع محلي نشط", false);
   }
 }
 
-function updateSyncStatusUI(text, isGood) {
-  const syncStatusText = document.getElementById("syncStatusText");
-  const statFirebaseStatus = document.getElementById("statFirebaseStatus");
-  if (syncStatusText) {
-    syncStatusText.textContent = text;
-  }
-  if (statFirebaseStatus) {
-    statFirebaseStatus.textContent = isGood ? "Firebase Live Connected" : "Local Sync Mode";
-  }
+function updateSyncStatusUI(label, isConnected) {
+  const statusEl = document.getElementById("syncStatusText");
+  const adminStatEl = document.getElementById("statFirebaseStatus");
+  if (statusEl) statusEl.textContent = label;
+  if (adminStatEl) adminStatEl.textContent = isConnected ? "Firebase Live Sync" : "Local Cache Active";
 }
 
-// الاستماع للتحديثات السحابية المباشرة (Over-The-Air Data Sync)
+function normalizeFirebaseBooks(rawData) {
+  if (!rawData) return [];
+  if (Array.isArray(rawData)) return rawData.filter(Boolean);
+  if (typeof rawData === "object") return Object.values(rawData).filter(Boolean);
+  return [];
+}
+
 function listenToFirebaseUpdates() {
   if (!firebaseDb) return;
 
-  // مزامنة الكتب والأسعار
   firebaseDb.ref("books").on("value", (snapshot) => {
-    const data = snapshot.val();
-    if (data && Array.isArray(data) && data.length > 0) {
-      currentBooks = data;
-      localStorage.setItem("nahralelm_books", JSON.stringify(currentBooks));
-      populateDropdownFilters();
-      renderCatalogGrid();
-      renderAdminPricesTable();
-      updateAdminStats();
+    const incoming = normalizeFirebaseBooks(snapshot.val());
+    if (incoming.length > 0) {
+      currentBooks = incoming;
+      localStorage.setItem(STORAGE_KEYS.BOOKS, JSON.stringify(currentBooks));
+      refreshStorefrontViews();
+    } else {
+      // في حال كانت قاعدة البيانات فارغة، نُبقي البيانات الأولية ونغذيها تلقائياً
+      if (currentBooks.length === 0) {
+        currentBooks = [...DEFAULT_BOOKS];
+      }
+      localStorage.setItem(STORAGE_KEYS.BOOKS, JSON.stringify(currentBooks));
+      firebaseDb.ref("books").set(currentBooks).catch(() => {});
+      refreshStorefrontViews();
     }
   });
 
-  // مزامنة تسعيرة الطباعة
   firebaseDb.ref("printRates").on("value", (snapshot) => {
     const data = snapshot.val();
-    if (data) {
-      currentPrintRates = { ...currentPrintRates, ...data };
-      localStorage.setItem("nahralelm_print_rates", JSON.stringify(currentPrintRates));
+    if (data && typeof data === "object") {
+      currentPrintRates = { ...DEFAULT_PRINT_RATES, ...data };
+      localStorage.setItem(STORAGE_KEYS.RATES, JSON.stringify(currentPrintRates));
       updatePrintCalculator();
-      populatePrintingRatesForm();
+      if (isAdminAuthenticated) populatePrintingRatesForm();
     }
   });
 
-  // مزامنة شريط الإعلانات
   firebaseDb.ref("announcement").on("value", (snapshot) => {
     const data = snapshot.val();
-    if (data) {
-      currentAnnouncement = { ...currentAnnouncement, ...data };
-      localStorage.setItem("nahralelm_announcement", JSON.stringify(currentAnnouncement));
+    if (data && typeof data === "object") {
+      currentAnnouncement = { ...DEFAULT_ANNOUNCEMENT, ...data };
+      localStorage.setItem(STORAGE_KEYS.BANNER, JSON.stringify(currentAnnouncement));
       renderAnnouncementBanner();
+      if (isAdminAuthenticated) populateAnnouncementForm();
     }
   });
 }
 
-// حفظ البيانات في فايربيس ومحلياً
 function persistBooksData() {
-  localStorage.setItem("nahralelm_books", JSON.stringify(currentBooks));
+  localStorage.setItem(STORAGE_KEYS.BOOKS, JSON.stringify(currentBooks));
   if (firebaseDb) {
-    firebaseDb.ref("books").set(currentBooks).catch(err => console.error("Firebase save books error:", err));
+    firebaseDb.ref("books").set(currentBooks).catch((err) => console.warn("Sync warning:", err));
   }
 }
 
 function persistPrintRates() {
-  localStorage.setItem("nahralelm_print_rates", JSON.stringify(currentPrintRates));
+  localStorage.setItem(STORAGE_KEYS.RATES, JSON.stringify(currentPrintRates));
   if (firebaseDb) {
-    firebaseDb.ref("printRates").set(currentPrintRates).catch(err => console.error("Firebase save rates error:", err));
+    firebaseDb.ref("printRates").set(currentPrintRates).catch((err) => console.warn("Sync warning:", err));
   }
 }
 
 function persistAnnouncement() {
-  localStorage.setItem("nahralelm_announcement", JSON.stringify(currentAnnouncement));
+  localStorage.setItem(STORAGE_KEYS.BANNER, JSON.stringify(currentAnnouncement));
   if (firebaseDb) {
-    firebaseDb.ref("announcement").set(currentAnnouncement).catch(err => console.error("Firebase save announcement error:", err));
+    firebaseDb.ref("announcement").set(currentAnnouncement).catch((err) => console.warn("Sync warning:", err));
   }
 }
 
-// تحميل البيانات المحفوظة محلياً عند بدء التشغيل
 function loadInitialState() {
-  const savedBooks = localStorage.getItem("nahralelm_books");
-  if (savedBooks) {
-    try {
-      currentBooks = JSON.parse(savedBooks);
-    } catch {
+  try {
+    const savedBooks = localStorage.getItem(STORAGE_KEYS.BOOKS);
+    const parsedBooks = savedBooks ? JSON.parse(savedBooks) : null;
+    if (Array.isArray(parsedBooks) && parsedBooks.length > 0) {
+      currentBooks = parsedBooks;
+    } else {
       currentBooks = [...DEFAULT_BOOKS];
+      localStorage.setItem(STORAGE_KEYS.BOOKS, JSON.stringify(currentBooks));
     }
-  } else {
+  } catch (_) {
     currentBooks = [...DEFAULT_BOOKS];
-    localStorage.setItem("nahralelm_books", JSON.stringify(currentBooks));
   }
 
-  const savedRates = localStorage.getItem("nahralelm_print_rates");
-  if (savedRates) {
-    try {
-      currentPrintRates = JSON.parse(savedRates);
-    } catch {
-      currentPrintRates = { ...DEFAULT_PRINT_RATES };
-    }
+  try {
+    const savedRates = localStorage.getItem(STORAGE_KEYS.RATES);
+    currentPrintRates = savedRates ? { ...DEFAULT_PRINT_RATES, ...JSON.parse(savedRates) } : { ...DEFAULT_PRINT_RATES };
+  } catch (_) {
+    currentPrintRates = { ...DEFAULT_PRINT_RATES };
   }
 
-  const savedAnnouncement = localStorage.getItem("nahralelm_announcement");
-  if (savedAnnouncement) {
-    try {
-      currentAnnouncement = JSON.parse(savedAnnouncement);
-    } catch {
-      currentAnnouncement = { ...DEFAULT_ANNOUNCEMENT };
-    }
+  try {
+    const savedBanner = localStorage.getItem(STORAGE_KEYS.BANNER);
+    currentAnnouncement = savedBanner ? { ...DEFAULT_ANNOUNCEMENT, ...JSON.parse(savedBanner) } : { ...DEFAULT_ANNOUNCEMENT };
+  } catch (_) {
+    currentAnnouncement = { ...DEFAULT_ANNOUNCEMENT };
   }
 
-  const savedCart = localStorage.getItem("nahralelm_cart");
-  if (savedCart) {
-    try {
-      cartItems = JSON.parse(savedCart);
-    } catch {
-      cartItems = [];
-    }
+  try {
+    const savedCart = localStorage.getItem(STORAGE_KEYS.CART);
+    const parsedCart = savedCart ? JSON.parse(savedCart) : [];
+    cartItems = Array.isArray(parsedCart) ? parsedCart : [];
+  } catch (_) {
+    cartItems = [];
   }
 }
 
 // =========================================================================
-// 5. نظام الفلاتر التعليمية الثلاثي (المرحلة -> الصف -> المادة)
+// 7. نظام الأقسام الرئيسية + الفلاتر المشروطة + البحث الفوري
 // =========================================================================
+function toggleEducationalFiltersVisibility() {
+  const filtersPanel = document.getElementById("educationalFiltersPanel");
+  const printingBanner = document.getElementById("printingTabBanner");
+  const sectionHeading = document.getElementById("activeSectionHeading");
+
+  if (filtersPanel) {
+    const shouldShowFilters = activeCategory === "books" || activeCategory === "supplies";
+    filtersPanel.classList.toggle("hidden", !shouldShowFilters);
+  }
+
+  if (printingBanner) {
+    printingBanner.classList.toggle("hidden", activeCategory !== "printing");
+  }
+
+  if (sectionHeading) {
+    sectionHeading.textContent = CATEGORY_TITLES[activeCategory] || CATEGORY_TITLES.all;
+  }
+}
+
 function populateDropdownFilters() {
   const stageSelect = document.getElementById("stageSelect");
   const gradeSelect = document.getElementById("gradeSelect");
   const subjectSelect = document.getElementById("subjectSelect");
+  const publisherSelect = document.getElementById("publisherSelect");
 
-  if (!stageSelect || !gradeSelect || !subjectSelect) return;
+  if (!stageSelect || !gradeSelect || !subjectSelect || !publisherSelect) return;
 
-  const currentStage = stageSelect.value;
+  // الاعتماد على الكتب أو باكدجات السبلايز حسب التبويب النشط
+  let pool = currentBooks.filter((b) =>
+    activeCategory === "books" || activeCategory === "supplies"
+      ? b.category === activeCategory
+      : b.category === "books" || b.category === "supplies"
+  );
 
-  // استخراج الصفوف المطابقة للمرحلة المحددة
-  let filteredForGrade = currentBooks;
-  if (currentStage !== "all") {
-    filteredForGrade = currentBooks.filter(b => b.stage === currentStage);
+  const selectedStage = stageSelect.value;
+  if (selectedStage !== "all") {
+    pool = pool.filter((b) => b.stage === selectedStage);
   }
 
-  const grades = Array.from(new Set(filteredForGrade.map(b => b.grade))).filter(Boolean);
-  const prevSelectedGrade = gradeSelect.value;
-  gradeSelect.innerHTML = `<option value="all">كافة الصفوف الدراسية (${grades.length})</option>`;
-  grades.forEach(grade => {
+  // تعبئة الصفوف الدراسية
+  const grades = Array.from(new Set(pool.map((b) => b.grade))).filter(Boolean);
+  const prevGrade = gradeSelect.value;
+  gradeSelect.innerHTML = `<option value="all">كافة الصفوف (${grades.length})</option>`;
+  grades.forEach((grade) => {
     const opt = document.createElement("option");
     opt.value = grade;
     opt.textContent = grade;
-    if (grade === prevSelectedGrade) opt.selected = true;
+    if (grade === prevGrade) opt.selected = true;
     gradeSelect.appendChild(opt);
   });
 
-  // استخراج المواد المطابقة للمرحلة والصف المحددين
-  const currentGrade = gradeSelect.value;
-  let filteredForSubject = filteredForGrade;
-  if (currentGrade !== "all") {
-    filteredForSubject = filteredForGrade.filter(b => b.grade === currentGrade);
+  const selectedGrade = gradeSelect.value;
+  let subjectPool = pool;
+  if (selectedGrade !== "all") {
+    subjectPool = pool.filter((b) => b.grade === selectedGrade);
   }
 
-  const subjects = Array.from(new Set(filteredForSubject.map(b => b.subject))).filter(Boolean);
-  const prevSelectedSubject = subjectSelect.value;
-  subjectSelect.innerHTML = `<option value="all">كافة المواد الدراسية (${subjects.length})</option>`;
-  subjects.forEach(subject => {
+  // تعبئة المواد
+  const subjects = Array.from(new Set(subjectPool.map((b) => b.subject))).filter(Boolean);
+  const prevSubject = subjectSelect.value;
+  subjectSelect.innerHTML = `<option value="all">كافة المواد (${subjects.length})</option>`;
+  subjects.forEach((subject) => {
     const opt = document.createElement("option");
     opt.value = subject;
     opt.textContent = subject;
-    if (subject === prevSelectedSubject) opt.selected = true;
+    if (subject === prevSubject) opt.selected = true;
     subjectSelect.appendChild(opt);
+  });
+
+  // تعبئة دور النشر / السلاسل
+  const publishers = Array.from(new Set(subjectPool.map((b) => b.series))).filter(Boolean);
+  const prevPublisher = publisherSelect.value;
+  publisherSelect.innerHTML = `<option value="all">كافة دور النشر (${publishers.length})</option>`;
+  publishers.forEach((pub) => {
+    const opt = document.createElement("option");
+    opt.value = pub;
+    opt.textContent = pub;
+    if (pub === prevPublisher) opt.selected = true;
+    publisherSelect.appendChild(opt);
   });
 }
 
-function getFilteredBooks() {
+function getFilteredProducts() {
   const stage = document.getElementById("stageSelect")?.value || "all";
   const grade = document.getElementById("gradeSelect")?.value || "all";
   const subject = document.getElementById("subjectSelect")?.value || "all";
+  const publisher = document.getElementById("publisherSelect")?.value || "all";
+  const query = searchQuery.toLowerCase().trim();
 
-  return currentBooks.filter(book => {
-    const matchStage = (stage === "all" || book.stage === stage);
-    const matchGrade = (grade === "all" || book.grade === grade);
-    const matchSubject = (subject === "all" || book.subject === subject);
-    const matchSeries = (selectedSeriesFilter === "all" || book.series.includes(selectedSeriesFilter));
+  const useEduFilters = activeCategory === "books" || activeCategory === "supplies";
 
-    return matchStage && matchGrade && matchSubject && matchSeries;
+  return currentBooks.filter((item) => {
+    const matchCategory = activeCategory === "all" || item.category === activeCategory;
+    if (!matchCategory) return false;
+
+    if (useEduFilters) {
+      if (stage !== "all" && item.stage !== stage) return false;
+      if (grade !== "all" && item.grade !== grade) return false;
+      if (subject !== "all" && item.subject !== subject) return false;
+      if (publisher !== "all" && item.series !== publisher) return false;
+    }
+
+    if (query) {
+      const searchable = `${item.title} ${item.grade} ${item.subject} ${item.series} ${item.stage} ${item.badge || ""}`.toLowerCase();
+      if (!searchable.includes(query)) return false;
+    }
+
+    return true;
   });
 }
 
 // =========================================================================
-// 6. عرض كتالوج الكتب والمنتجات وتحديث واجهة المستخدم
+// 8. عرض قسم العروض والخصومات (Hot Deals) وشبكة البطاقات (Grid Cards)
 // =========================================================================
+function renderHotDeals() {
+  const section = document.getElementById("hotDealsSection");
+  const carousel = document.getElementById("hotDealsCarousel");
+  if (!section || !carousel) return;
+
+  const deals = currentBooks.filter((item) => item.isHotDeal || (item.originalPrice && item.originalPrice > item.price));
+
+  if (deals.length === 0) {
+    section.classList.add("hidden");
+    return;
+  }
+
+  section.classList.remove("hidden");
+  carousel.innerHTML = deals
+    .map((item) => {
+      const hasDiscount = item.originalPrice && item.originalPrice > item.price;
+      const discountPct = hasDiscount
+        ? Math.round(((item.originalPrice - item.price) / item.originalPrice) * 100)
+        : 0;
+      const thumbUrl = resolveProductImage(item);
+      const fallbackUrl = getFallbackThumbnailSvg(item);
+
+      return `
+        <div class="w-56 sm:w-64 shrink-0 bg-white rounded-2xl border border-amber-200 shadow-sm hover:shadow-md transition-all overflow-hidden flex flex-col justify-between">
+          <div class="relative aspect-[16/10] bg-slate-100 overflow-hidden">
+            <img
+              src="${escapeHtml(thumbUrl)}"
+              alt="${escapeHtml(item.title)}"
+              onerror="this.onerror=null; this.src='${fallbackUrl}';"
+              class="w-full h-full object-cover"
+            />
+            <span class="absolute top-2 right-2 bg-rose-600 text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow">
+              ${discountPct > 0 ? `خصم ${discountPct}%` : escapeHtml(item.badge || "عرض خاص")}
+            </span>
+          </div>
+          <div class="p-3 flex-1 flex flex-col justify-between space-y-2">
+            <div>
+              <h4 class="text-xs font-black text-slate-900 line-clamp-2 leading-snug">${escapeHtml(item.title)}</h4>
+              <p class="text-[10px] text-slate-500 font-semibold mt-0.5">${escapeHtml(item.grade)}</p>
+            </div>
+            <div>
+              <div class="flex items-baseline gap-2 mb-2">
+                <span class="text-sm font-black text-emerald-700">${item.price} ج.م</span>
+                ${hasDiscount ? `<span class="text-[11px] text-slate-400 line-through">${item.originalPrice} ج.م</span>` : ""}
+              </div>
+              <button
+                onclick="handleAddToCart('${escapeHtml(item.id)}')"
+                class="app-tap-effect w-full bg-gradient-to-r from-rose-600 to-amber-600 hover:from-rose-700 hover:to-amber-700 text-white font-black text-[11px] py-1.5 px-2.5 rounded-xl shadow-sm transition-all flex items-center justify-center gap-1.5"
+              >
+                <i class="fa-solid fa-cart-plus"></i>
+                <span>أضف للسلة</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      `;
+    })
+    .join("");
+}
+
 function renderCatalogGrid() {
   const catalogGrid = document.getElementById("catalogGrid");
   const noResultsNotice = document.getElementById("noResultsNotice");
   const filteredItemsCount = document.getElementById("filteredItemsCount");
-
   if (!catalogGrid) return;
 
-  const items = getFilteredBooks();
-
-  if (filteredItemsCount) {
-    filteredItemsCount.textContent = items.length;
-  }
+  const items = getFilteredProducts();
+  if (filteredItemsCount) filteredItemsCount.textContent = items.length;
 
   if (items.length === 0) {
     catalogGrid.innerHTML = "";
@@ -725,104 +998,132 @@ function renderCatalogGrid() {
 
   if (noResultsNotice) noResultsNotice.classList.add("hidden");
 
-  catalogGrid.innerHTML = items.map(item => {
-    const inCartItem = cartItems.find(c => c.id === item.id);
-    const inCartQty = inCartItem ? inCartItem.quantity : 0;
+  catalogGrid.innerHTML = items
+    .map((item) => {
+      const inCartItem = cartItems.find((c) => c.id === item.id);
+      const inCartQty = inCartItem ? inCartItem.quantity : 0;
+      const thumbUrl = resolveProductImage(item);
+      const fallbackUrl = getFallbackThumbnailSvg(item);
+      const hasDiscount = item.originalPrice && item.originalPrice > item.price;
+      const isLimited = item.stock && item.stock.includes("محدودة");
+      const stockClass = isLimited
+        ? "bg-amber-50 text-amber-700 border-amber-200"
+        : "bg-emerald-50 text-emerald-700 border-emerald-200";
 
-    return `
-      <div class="bg-white rounded-2xl p-4 border border-slate-200/90 shadow-sm hover:shadow-md transition-all flex flex-col justify-between group">
-        <div>
-          <!-- Header Tag & Series -->
-          <div class="flex items-center justify-between gap-2 mb-2">
-            <span class="inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
-              ${item.badge || item.stage}
-            </span>
-            <span class="text-[11px] font-bold text-slate-400">
-              ${item.series}
-            </span>
-          </div>
-
-          <!-- Title & Grade -->
-          <div class="flex items-start gap-2.5 mb-2">
-            <div class="w-9 h-9 rounded-xl bg-slate-50 text-slate-700 flex items-center justify-center shrink-0 border border-slate-200 text-sm group-hover:bg-emerald-600 group-hover:text-white transition-colors">
-              <i class="fa-solid ${item.icon || 'fa-book'}"></i>
+      return `
+        <article class="bg-white rounded-2xl border border-slate-200/90 shadow-sm hover:shadow-md transition-all overflow-hidden flex flex-col justify-between group">
+          <div>
+            <!-- صورة المنتج مع Fallback أنيق -->
+            <div class="relative aspect-[4/3] bg-slate-100 overflow-hidden">
+              <img
+                src="${escapeHtml(thumbUrl)}"
+                alt="${escapeHtml(item.title)}"
+                onerror="this.onerror=null; this.src='${fallbackUrl}';"
+                class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+              />
+              ${item.badge ? `
+                <span class="absolute top-2 right-2 bg-brand-navy/90 backdrop-blur-sm text-white text-[9px] sm:text-[10px] font-black px-2 py-0.5 rounded-full shadow">
+                  ${escapeHtml(item.badge)}
+                </span>
+              ` : ""}
+              ${hasDiscount ? `
+                <span class="absolute top-2 left-2 bg-rose-600 text-white text-[9px] sm:text-[10px] font-black px-2 py-0.5 rounded-full shadow">
+                  عرض
+                </span>
+              ` : ""}
             </div>
-            <div>
-              <h4 class="font-bold text-xs sm:text-sm text-slate-900 leading-snug">
-                ${item.title}
+
+            <!-- تفاصيل المنتج -->
+            <div class="p-2.5 sm:p-3.5 space-y-1.5">
+              <div class="flex items-center justify-between gap-1">
+                <span class="text-[9px] sm:text-[10px] font-bold px-1.5 py-0.5 rounded border ${stockClass} truncate">
+                  ${escapeHtml(item.stock || "متوفر بالمكتبة")}
+                </span>
+                <span class="text-[9px] sm:text-[10px] font-bold text-slate-400 truncate">
+                  ${escapeHtml(item.series || "")}
+                </span>
+              </div>
+
+              <h4 class="font-bold text-xs sm:text-sm text-slate-900 leading-snug line-clamp-2 min-h-[2.2rem]">
+                ${escapeHtml(item.title)}
               </h4>
-              <p class="text-[11px] text-slate-500 font-medium">
-                ${item.grade} • ${item.subject}
+
+              <p class="text-[10px] sm:text-[11px] text-slate-500 font-semibold truncate">
+                ${escapeHtml(item.grade || "")} • ${escapeHtml(item.subject || "")}
               </p>
             </div>
           </div>
-        </div>
 
-        <div class="pt-3 border-t border-slate-100 mt-2">
-          <!-- Live Price Display -->
-          <div class="flex items-center justify-between mb-3">
-            <div>
-              <span class="text-[10px] text-slate-400 block font-semibold">السعر الرسمي:</span>
-              <span class="text-emerald-700 font-black text-base sm:text-lg">
-                ${item.price} <span class="text-xs font-bold">ج.م</span>
-              </span>
+          <!-- السعر وأزرار الطلب -->
+          <div class="px-2.5 pb-2.5 sm:px-3.5 sm:pb-3.5 pt-2 border-t border-slate-100 space-y-2">
+            <div class="flex items-baseline justify-between gap-1">
+              <div class="flex items-baseline gap-1.5">
+                <span class="text-emerald-700 font-black text-sm sm:text-base">
+                  ${item.price} <span class="text-[11px] font-bold">ج.م</span>
+                </span>
+                ${hasDiscount ? `<span class="text-[10px] sm:text-xs text-slate-400 line-through">${item.originalPrice}</span>` : ""}
+              </div>
             </div>
-            <span class="text-[11px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md">
-              <i class="fa-solid fa-circle-check text-[9px] mr-1"></i> ${item.stock || 'متوفر بالمكتبة'}
-            </span>
+
+            <div class="flex items-center gap-1.5">
+              <button
+                onclick="handleAddToCart('${escapeHtml(item.id)}')"
+                class="app-tap-effect flex-1 flex items-center justify-center gap-1 ${inCartQty > 0 ? "bg-amber-500 hover:bg-amber-600 text-slate-950" : "bg-brand-navy hover:bg-slate-800 text-white"} font-bold text-[11px] sm:text-xs py-2 px-2 rounded-xl transition-all shadow-sm"
+              >
+                <i class="fa-solid ${inCartQty > 0 ? "fa-check" : "fa-cart-plus"} text-[11px]"></i>
+                <span>${inCartQty > 0 ? `بالسلة (${inCartQty})` : "أضف للسلة"}</span>
+              </button>
+
+              <a
+                href="${generateItemWhatsAppUrl(item)}"
+                target="_blank"
+                rel="noopener"
+                onclick="recordItemClick('${escapeHtml(item.id)}')"
+                title="طلب سريع واتساب"
+                class="app-tap-effect w-9 h-8 sm:h-9 shrink-0 flex items-center justify-center bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl transition-all shadow-sm"
+              >
+                <i class="fa-brands fa-whatsapp text-sm sm:text-base"></i>
+              </a>
+            </div>
           </div>
-
-          <!-- Action Buttons: Add to Cart & Direct WhatsApp -->
-          <div class="grid grid-cols-2 gap-2">
-            
-            <!-- Quick Add to Cart Button -->
-            <button 
-              onclick="handleAddToCart('${item.id}')"
-              class="app-tap-effect flex items-center justify-center gap-1.5 ${inCartQty > 0 ? 'bg-amber-500 hover:bg-amber-600' : 'bg-slate-900 hover:bg-slate-800'} text-white font-bold text-xs py-2 px-2.5 rounded-xl transition-all shadow-sm">
-              <i class="fa-solid ${inCartQty > 0 ? 'fa-check' : 'fa-cart-plus'} text-xs"></i>
-              <span>${inCartQty > 0 ? `في السلة (${inCartQty})` : 'إضافة للطلب'}</span>
-            </button>
-
-            <!-- Instant WhatsApp Order Button -->
-            <a 
-              href="${generateItemWhatsAppUrl(item)}"
-              target="_blank"
-              rel="noopener"
-              onclick="recordItemClick('${item.id}')"
-              class="app-tap-effect flex items-center justify-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-2 px-2.5 rounded-xl transition-all shadow-sm">
-              <i class="fa-brands fa-whatsapp text-sm"></i>
-              <span>اطلب فوراً</span>
-            </a>
-
-          </div>
-        </div>
-      </div>
-    `;
-  }).join("");
+        </article>
+      `;
+    })
+    .join("");
 }
 
-function generateItemWhatsAppUrl(item) {
-  const msg = `مرحباً مكتبة نهر العلم (إدارة أ/ إيهاب)،\nأود الاستفسار وتأكيد توفر الكتاب التالي للطلب:\n- الكتاب: ${item.title}\n- المرحلة: ${item.stage} (${item.grade})\n- المادة: ${item.subject}\n- السلسلة: ${item.series}\n- السعر المعتمد: ${item.price} ج.م\n\nأرجو إفادتي بإمكانية الاستلام أو التوصيل، شكراً لكم!`;
-  return `https://wa.me/${STORE_WHATSAPP_NUMBER}?text=${encodeURIComponent(msg)}`;
-}
-
-function recordItemClick(itemId) {
-  const item = currentBooks.find(b => b.id === itemId);
-  if (item) {
-    item.clicks = (item.clicks || 0) + 1;
-    persistBooksData();
+function refreshStorefrontViews() {
+  populateDropdownFilters();
+  renderHotDeals();
+  renderCatalogGrid();
+  if (isAdminAuthenticated) {
+    renderAdminPricesTable();
     updateAdminStats();
   }
 }
 
+function generateItemWhatsAppUrl(item) {
+  const msg = `مرحباً مكتبة نهر العلم (إدارة أ/ إيهاب)،\nأود الاستفسار وطلب المنتج التالي:\n- المنتج: ${item.title}\n- المرحلة/الفئة: ${item.stage} (${item.grade})\n- السعر: ${item.price} ج.م\n\nأرجو تأكيد التوفر وتجهيز الطلب، شكراً لكم!`;
+  return `https://wa.me/${STORE_WHATSAPP_NUMBER}?text=${encodeURIComponent(msg)}`;
+}
+
+function recordItemClick(itemId) {
+  const item = currentBooks.find((b) => b.id === itemId);
+  if (item) {
+    item.clicks = (item.clicks || 0) + 1;
+    persistBooksData();
+    if (isAdminAuthenticated) updateAdminStats();
+  }
+}
+
 // =========================================================================
-// 7. سلة الطلبات الذكية (Quick Cart Feature)
+// 9. سلة الطلبات الذكية (تحديد الاستلام من المكتبة أو التوصيل للمنزل)
 // =========================================================================
 function handleAddToCart(bookId) {
-  const book = currentBooks.find(b => b.id === bookId);
+  const book = currentBooks.find((b) => b.id === bookId);
   if (!book) return;
 
-  const existing = cartItems.find(c => c.id === bookId);
+  const existing = cartItems.find((c) => c.id === bookId);
   if (existing) {
     existing.quantity += 1;
   } else {
@@ -836,34 +1137,25 @@ function handleAddToCart(bookId) {
     });
   }
 
-  localStorage.setItem("nahralelm_cart", JSON.stringify(cartItems));
+  localStorage.setItem(STORAGE_KEYS.CART, JSON.stringify(cartItems));
   updateCartBadges();
   renderCatalogGrid();
   renderCartDrawer();
   recordItemClick(bookId);
-
-  // إشعار بصري للمستخدم
-  showToastNotification(`تمت إضافة "${book.title}" إلى سلة الطلبات!`);
+  showToastNotification(`تمت إضافة "${book.title}" إلى السلة!`);
 }
 
 function updateCartBadges() {
   const totalCount = cartItems.reduce((acc, item) => acc + item.quantity, 0);
-  
   const cartCountBadge = document.getElementById("cartCountBadge");
   const bottomNavCartCount = document.getElementById("bottomNavCartCount");
   const cartDrawerCountPill = document.getElementById("cartDrawerCountPill");
 
   if (cartCountBadge) cartCountBadge.textContent = totalCount;
-  
   if (bottomNavCartCount) {
     bottomNavCartCount.textContent = totalCount;
-    if (totalCount > 0) {
-      bottomNavCartCount.classList.remove("hidden");
-    } else {
-      bottomNavCartCount.classList.add("hidden");
-    }
+    bottomNavCartCount.classList.toggle("hidden", totalCount <= 0);
   }
-
   if (cartDrawerCountPill) {
     cartDrawerCountPill.textContent = `${totalCount} عناصر`;
   }
@@ -889,35 +1181,35 @@ function renderCartDrawer() {
 
   let totalCost = 0;
 
-  cartItemsList.innerHTML = cartItems.map((item, idx) => {
-    const itemTotal = item.price * item.quantity;
-    totalCost += itemTotal;
-
-    return `
-      <div class="bg-slate-50 rounded-2xl p-3 border border-slate-200 flex items-center justify-between gap-3">
-        <div class="space-y-0.5 flex-1 min-w-0">
-          <h5 class="text-xs font-bold text-slate-900 truncate">${item.title}</h5>
-          <p class="text-[10px] text-slate-500">${item.grade}</p>
-          <div class="text-xs font-black text-emerald-700">
-            ${item.price} ج.م × ${item.quantity} = ${itemTotal} ج.م
+  cartItemsList.innerHTML = cartItems
+    .map((item) => {
+      const itemTotal = item.price * item.quantity;
+      totalCost += itemTotal;
+      return `
+        <div class="bg-slate-50 rounded-2xl p-3 border border-slate-200 flex items-center justify-between gap-3">
+          <div class="space-y-0.5 flex-1 min-w-0">
+            <h5 class="text-xs font-bold text-slate-900 truncate">${escapeHtml(item.title)}</h5>
+            <p class="text-[10px] text-slate-500">${escapeHtml(item.grade || "")}</p>
+            <div class="text-xs font-black text-emerald-700">
+              ${item.price} ج.م × ${item.quantity} = ${itemTotal} ج.م
+            </div>
+          </div>
+          <div class="flex items-center gap-1.5 shrink-0">
+            <button onclick="changeCartItemQty('${escapeHtml(item.id)}', -1)" class="w-7 h-7 rounded-lg bg-white border border-slate-300 flex items-center justify-center text-slate-700 text-xs font-bold hover:bg-slate-100">
+              <i class="fa-solid fa-minus"></i>
+            </button>
+            <span class="w-6 text-center text-xs font-bold text-slate-900">${item.quantity}</span>
+            <button onclick="changeCartItemQty('${escapeHtml(item.id)}', 1)" class="w-7 h-7 rounded-lg bg-white border border-slate-300 flex items-center justify-center text-slate-700 text-xs font-bold hover:bg-slate-100">
+              <i class="fa-solid fa-plus"></i>
+            </button>
+            <button onclick="removeCartItem('${escapeHtml(item.id)}')" title="حذف" class="w-7 h-7 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center text-xs hover:bg-rose-100 mr-1">
+              <i class="fa-solid fa-trash-can"></i>
+            </button>
           </div>
         </div>
-
-        <div class="flex items-center gap-1.5 shrink-0">
-          <button onclick="changeCartItemQty('${item.id}', -1)" class="w-7 h-7 rounded-lg bg-white border border-slate-300 flex items-center justify-center text-slate-700 text-xs font-bold hover:bg-slate-100 active:scale-95">
-            <i class="fa-solid fa-minus"></i>
-          </button>
-          <span class="w-6 text-center text-xs font-bold text-slate-900">${item.quantity}</span>
-          <button onclick="changeCartItemQty('${item.id}', 1)" class="w-7 h-7 rounded-lg bg-white border border-slate-300 flex items-center justify-center text-slate-700 text-xs font-bold hover:bg-slate-100 active:scale-95">
-            <i class="fa-solid fa-plus"></i>
-          </button>
-          <button onclick="removeCartItem('${item.id}')" title="حذف" class="w-7 h-7 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center text-xs hover:bg-rose-100 mr-1">
-            <i class="fa-solid fa-trash-can"></i>
-          </button>
-        </div>
-      </div>
-    `;
-  }).join("");
+      `;
+    })
+    .join("");
 
   if (cartDrawerTotalPrice) {
     cartDrawerTotalPrice.textContent = `${totalCost} ج.م`;
@@ -925,23 +1217,23 @@ function renderCartDrawer() {
 }
 
 function changeCartItemQty(itemId, delta) {
-  const item = cartItems.find(c => c.id === itemId);
+  const item = cartItems.find((c) => c.id === itemId);
   if (!item) return;
 
   item.quantity += delta;
   if (item.quantity <= 0) {
-    cartItems = cartItems.filter(c => c.id !== itemId);
+    cartItems = cartItems.filter((c) => c.id !== itemId);
   }
 
-  localStorage.setItem("nahralelm_cart", JSON.stringify(cartItems));
+  localStorage.setItem(STORAGE_KEYS.CART, JSON.stringify(cartItems));
   updateCartBadges();
   renderCatalogGrid();
   renderCartDrawer();
 }
 
 function removeCartItem(itemId) {
-  cartItems = cartItems.filter(c => c.id !== itemId);
-  localStorage.setItem("nahralelm_cart", JSON.stringify(cartItems));
+  cartItems = cartItems.filter((c) => c.id !== itemId);
+  localStorage.setItem(STORAGE_KEYS.CART, JSON.stringify(cartItems));
   updateCartBadges();
   renderCatalogGrid();
   renderCartDrawer();
@@ -949,7 +1241,7 @@ function removeCartItem(itemId) {
 
 function clearCart() {
   cartItems = [];
-  localStorage.setItem("nahralelm_cart", JSON.stringify(cartItems));
+  localStorage.setItem(STORAGE_KEYS.CART, JSON.stringify(cartItems));
   updateCartBadges();
   renderCatalogGrid();
   renderCartDrawer();
@@ -958,38 +1250,119 @@ function clearCart() {
 function sendCartOrderWhatsApp() {
   if (cartItems.length === 0) return;
 
+  const selectedDeliveryInput = document.querySelector('input[name="deliveryMethod"]:checked');
+  const deliveryMethod = selectedDeliveryInput ? selectedDeliveryInput.value : "pickup";
+  const deliveryAddress = document.getElementById("cartDeliveryAddress")?.value.trim() || "";
   const customerName = document.getElementById("cartCustomerName")?.value.trim() || "غير محدد";
+
+  if (deliveryMethod === "delivery" && !deliveryAddress) {
+    showToastNotification("يرجى كتابة عنوان التوصيل بالتفصيل أولاً!");
+    document.getElementById("cartDeliveryAddress")?.focus();
+    return;
+  }
+
   let totalCost = 0;
-
   let message = `مرحباً مكتبة نهر العلم (إدارة أ/ إيهاب)،\n`;
-  message += `أود تأكيد طلب الكتب والمستلزمات الدراسية التالية:\n\n`;
+  message += `أود تأكيد طلب المنتجات التالية:\n\n`;
 
-  cartItems.forEach((item, index) => {
+  cartItems.forEach((item, idx) => {
     const sub = item.price * item.quantity;
     totalCost += sub;
-    message += `${index + 1}. ${item.title} (${item.grade}) × ${item.quantity} = ${sub} ج.م\n`;
+    message += `${idx + 1}. ${item.title} (${item.grade}) × ${item.quantity} = ${sub} ج.م\n`;
   });
 
   message += `\n─────────────────────\n`;
-  message += `💰 إجمالي تكلفة الطلب: ${totalCost} ج.م\n`;
-  message += `👤 اسم العميل / العنوان: ${customerName}\n`;
-  message += `\nأرجو تجهيز الطلب وإفادتي بموعد الاستلام. شكراً لكم!`;
+  message += `💰 إجمالي الطلب: ${totalCost} ج.م\n`;
+  message += `🚚 طريقة الاستلام: ${deliveryMethod === "delivery" ? "توصيل للمنزل" : "استلام وتجهيز مسبق من المكتبة"}\n`;
+  if (deliveryMethod === "delivery") {
+    message += `📍 عنوان التوصيل: ${deliveryAddress}\n`;
+  }
+  message += `👤 اسم العميل: ${customerName}\n`;
+  message += `\nشكراً لتعاونكم!`;
 
   const url = `https://wa.me/${STORE_WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
   window.open(url, "_blank");
 }
 
 // =========================================================================
-// 8. حاسبة خدمة اطبع مذكرتك (Interactive Printing Service)
+// 10. حاسبة الطباعة الذكية وعدّ صفحات PDF تلقائياً بـ PDF.js
 // =========================================================================
+function configurePdfJsWorker() {
+  if (typeof window.pdfjsLib !== "undefined") {
+    window.pdfjsLib.GlobalWorkerOptions.workerSrc =
+      "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+  }
+}
+
+async function handlePrintFileSelection(file) {
+  const display = document.getElementById("selectedFileNameDisplay");
+  const statusPill = document.getElementById("pdfAutoCountStatus");
+  const pagesInput = document.getElementById("calcPagesCount");
+
+  if (!file) return;
+
+  if (display) {
+    display.textContent = `الملف المختار: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
+  }
+
+  const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+  const isImage = file.type.startsWith("image/") || /\.(jpg|jpeg|png|webp)$/i.test(file.name);
+
+  if (isPdf && typeof window.pdfjsLib !== "undefined") {
+    if (statusPill) {
+      statusPill.classList.remove("hidden", "bg-amber-100", "text-amber-800");
+      statusPill.classList.add("bg-sky-100", "text-sky-800");
+      statusPill.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> جاري فحص وحساب صفحات ملف PDF تلقائياً...`;
+    }
+
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      const loadingTask = window.pdfjsLib.getDocument({
+        data: arrayBuffer,
+        disableWorker: window.location.protocol === "file:"
+      });
+      const pdfDoc = await loadingTask.promise;
+      const numPages = pdfDoc.numPages || 1;
+
+      if (pagesInput) pagesInput.value = numPages;
+      updatePrintCalculator();
+
+      if (statusPill) {
+        statusPill.classList.remove("bg-sky-100", "text-sky-800");
+        statusPill.classList.add("bg-emerald-100", "text-emerald-800");
+        statusPill.innerHTML = `<i class="fa-solid fa-circle-check"></i> تم احتساب عدد الصفحات تلقائياً: ${numPages} صفحة`;
+      }
+      showToastNotification(`تم اكتشاف ${numPages} صفحة في ملف الـ PDF وحساب التكلفة تلقائياً!`);
+    } catch (err) {
+      console.warn("PDF.js parse notice:", err);
+      if (statusPill) {
+        statusPill.classList.remove("bg-sky-100", "text-sky-800");
+        statusPill.classList.add("bg-amber-100", "text-amber-800");
+        statusPill.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> يرجى التأكد من عدد الصفحات وإدخالها يدوياً`;
+      }
+    }
+  } else if (isImage) {
+    if (pagesInput) pagesInput.value = 1;
+    updatePrintCalculator();
+    if (statusPill) {
+      statusPill.classList.remove("hidden", "bg-amber-100", "text-amber-800");
+      statusPill.classList.add("bg-emerald-100", "text-emerald-800");
+      statusPill.innerHTML = `<i class="fa-solid fa-image"></i> تم تعيين عدد الصفحات: 1 صفحة (صورة)`;
+    }
+  } else if (statusPill) {
+    statusPill.classList.remove("hidden", "bg-emerald-100", "text-emerald-800");
+    statusPill.classList.add("bg-amber-100", "text-amber-800");
+    statusPill.innerHTML = `<i class="fa-solid fa-file-word"></i> يرجى إدخال عدد صفحات المستند يدوياً`;
+  }
+}
+
 function updatePrintCalculator() {
-  const pages = parseInt(document.getElementById("calcPagesCount")?.value, 10) || 1;
-  const copies = parseInt(document.getElementById("calcCopiesCount")?.value, 10) || 1;
+  const pages = Math.max(1, parseInt(document.getElementById("calcPagesCount")?.value, 10) || 1);
+  const copies = Math.max(1, parseInt(document.getElementById("calcCopiesCount")?.value, 10) || 1);
   const colorType = document.getElementById("calcColorType")?.value || "bw";
   const bindingType = document.getElementById("calcBindingType")?.value || "wire";
 
   const pageRate = colorType === "color" ? currentPrintRates.colorPage : currentPrintRates.bwPage;
-  
   let bindingRate = 0;
   if (bindingType === "wire") bindingRate = currentPrintRates.bindingWire;
   else if (bindingType === "plastic") bindingRate = currentPrintRates.bindingPlastic;
@@ -1010,66 +1383,160 @@ function updatePrintCalculator() {
 
 function sendPrintOrderWhatsApp() {
   const docFile = document.getElementById("printDocInput")?.files[0];
-  const fileName = docFile ? docFile.name : "مذكرة دراسية (سيتم إرفاقها بالمحادثة)";
-  const pages = parseInt(document.getElementById("calcPagesCount")?.value, 10) || 1;
-  const copies = parseInt(document.getElementById("calcCopiesCount")?.value, 10) || 1;
-  const colorType = document.getElementById("calcColorType")?.value === "color" ? "ألوان بجودة عالية" : "أبيض وأسود ليزر";
-  
+  const fileName = docFile ? docFile.name : "مذكرة دراسية (سيتم إرفاقها يدوياً بالمحادثة)";
+  const pages = Math.max(1, parseInt(document.getElementById("calcPagesCount")?.value, 10) || 1);
+  const copies = Math.max(1, parseInt(document.getElementById("calcCopiesCount")?.value, 10) || 1);
+  const colorType = document.getElementById("calcColorType")?.value === "color" ? "ألوان عالية الدقة" : "أبيض وأسود ليزر";
+
   let bindingText = "بدون تغليف";
   const bindingType = document.getElementById("calcBindingType")?.value;
-  if (bindingType === "wire") bindingText = "تغليف سلك حديد فاخر";
-  else if (bindingType === "plastic") bindingText = "تغليف بلاستيك حلزوني";
-  else if (bindingType === "staple") bindingText = "تدبيس حراري";
+  if (bindingType === "wire") bindingText = "تغليف سلك حديد";
+  else if (bindingType === "plastic") bindingText = "تغليف بلاستيك";
+  else if (bindingType === "staple") bindingText = "تدبيس";
 
   const totalEstimate = document.getElementById("costTotalEstimate")?.textContent || "";
 
   let msg = `مرحباً مكتبة نهر العلم (إدارة أ/ إيهاب)،\n`;
-  msg += `طلب خدمة طباعة وتصوير وتغليف مذكرة:\n\n`;
+  msg += `طلب خدمة طباعة وتصوير مذكرة:\n\n`;
   msg += `📄 اسم الملف: ${fileName}\n`;
   msg += `📑 عدد الصفحات: ${pages} صفحة\n`;
   msg += `🔢 عدد النسخ: ${copies} نسخة\n`;
   msg += `🎨 نوع الطباعة: ${colorType}\n`;
   msg += `📎 نوع التغليف: ${bindingText}\n`;
-  msg += `💵 التكلفة المقدرة: ${totalEstimate}\n\n`;
-  msg += `سأقوم بإرسال الملف هنا مباشرة للطباعة. أرجو تأكيد الاستلام والتجهيز!`;
+  msg += `💵 التكلفة الإجمالية المقدرة: ${totalEstimate}\n\n`;
+  msg += `سأقوم بإرفاق ملف المذكرة الآن هنا داخل المحادثة، أرجو تأكيد التجهيز!`;
 
   const url = `https://wa.me/${STORE_WHATSAPP_NUMBER}?text=${encodeURIComponent(msg)}`;
   window.open(url, "_blank");
 }
 
 // =========================================================================
-// 9. البوابة المخفية للدخول الإداري (3-Second Long Press on Footer)
+// 11. مشاركة رابط المكتبة والتثبيت المشروط (Web Share & PWA Lifecycle)
+// =========================================================================
+async function shareLibraryLink() {
+  const shareUrl =
+    window.location.protocol === "file:" ? STORE_PUBLIC_URL : window.location.href;
+  const shareTitle = "مكتبة نهر العلم - إدارة أ/ إيهاب";
+  const shareText = "تصفح أسعار الكتب الخارجية، الأدوات المكتبية، باكدجات السبلايز، واطبع مذكرتك فوراً من تطبيق مكتبة نهر العلم:";
+
+  if (window.AndroidApp && typeof window.AndroidApp.shareLibraryLink === "function") {
+    window.AndroidApp.shareLibraryLink(shareTitle, shareText, shareUrl);
+    return;
+  }
+
+  if (navigator.share) {
+    try {
+      await navigator.share({
+        title: shareTitle,
+        text: shareText,
+        url: shareUrl
+      });
+      return;
+    } catch (_) {
+      // المتابعة للنسخ الاحتياطي
+    }
+  }
+
+  try {
+    await navigator.clipboard.writeText(`${shareText} ${shareUrl}`);
+    showToastNotification("تم نسخ رابط المكتبة! يمكنك مشاركته الآن في جروبات أولياء الأمور.");
+  } catch (_) {
+    showToastNotification(`رابط المكتبة: ${shareUrl}`);
+  }
+}
+
+function handleInstallButtonVisibility() {
+  const container = document.getElementById("installBtnContainer");
+  if (!container) return;
+
+  const isRunningNative =
+    window.isNativeApp === true ||
+    typeof window.AndroidApp !== "undefined" ||
+    navigator.userAgent.includes("NahrAlElmNativeApp") ||
+    window.location.protocol === "file:";
+
+  const isStandalone =
+    window.matchMedia("(display-mode: standalone)").matches ||
+    window.navigator.standalone === true;
+
+  if (isRunningNative || isStandalone || !deferredInstallPrompt) {
+    container.classList.add("hidden");
+  } else {
+    container.classList.remove("hidden");
+  }
+}
+
+function registerServiceWorkerSafely() {
+  if ("serviceWorker" in navigator && (window.location.protocol === "https:" || window.location.hostname === "localhost")) {
+    navigator.serviceWorker.register("./sw.js").catch((err) => {
+      console.warn("SW registration notice:", err.message);
+    });
+  }
+}
+
+// =========================================================================
+// 12. الإعلانات والتنويهات (العادية والمصورة)
+// =========================================================================
+function renderAnnouncementBanner() {
+  const banner = document.getElementById("liveAnnouncementBanner");
+  const text = document.getElementById("announcementText");
+  const badge = document.getElementById("announcementBadge");
+  const promoSection = document.getElementById("promoImageBannerSection");
+  const promoImg = document.getElementById("promoBannerImg");
+  const promoCaption = document.getElementById("promoBannerCaption");
+
+  if (banner) {
+    if (!currentAnnouncement.active || !currentAnnouncement.text?.trim()) {
+      banner.classList.add("hidden");
+    } else {
+      banner.classList.remove("hidden");
+      if (text) text.textContent = currentAnnouncement.text;
+      if (badge) {
+        badge.innerHTML = `<i class="fa-solid fa-bullhorn text-[9px] ml-1"></i> ${escapeHtml(currentAnnouncement.badge || "تنويه")}`;
+      }
+    }
+  }
+
+  if (promoSection && promoImg && promoCaption) {
+    const imgUrl = (currentAnnouncement.bannerImageUrl || "").trim();
+    if (currentAnnouncement.active && imgUrl !== "") {
+      promoImg.src = imgUrl;
+      promoImg.onerror = () => promoSection.classList.add("hidden");
+      promoCaption.textContent = currentAnnouncement.text || "";
+      promoSection.classList.remove("hidden");
+    } else {
+      promoSection.classList.add("hidden");
+    }
+  }
+}
+
+// =========================================================================
+// 13. البوابة السرية ولوحة الإدارة المحقونة ديناميكياً فقط بعد التحقق
+// لا توجد أي نصوص إدارية أو عناصر تحكم في كود الصفحة الظاهر للزوار
 // =========================================================================
 function setupHiddenAdminTrigger() {
   const trigger = document.getElementById("adminTriggerFooter");
   const indicator = document.getElementById("longPressIndicator");
   const bar = document.getElementById("longPressBar");
-  const modal = document.getElementById("adminAccessModal");
 
-  if (!trigger || !modal) return;
+  if (!trigger) return;
 
   let pressTimer = null;
   let progressInterval = null;
   const REQUIRED_HOLD_MS = 3000;
-  let holdProgress = 0;
 
-  function startHold(e) {
-    // منع السحب غير المقصود
-    holdProgress = 0;
+  function startHold() {
     if (indicator) indicator.classList.remove("hidden");
     if (bar) bar.style.width = "0%";
-    trigger.classList.add("long-press-active");
-
     const startTime = Date.now();
     progressInterval = setInterval(() => {
-      const elapsed = Date.now() - startTime;
-      const pct = Math.min(100, (elapsed / REQUIRED_HOLD_MS) * 100);
+      const pct = Math.min(100, ((Date.now() - startTime) / REQUIRED_HOLD_MS) * 100);
       if (bar) bar.style.width = `${pct}%`;
     }, 50);
 
     pressTimer = setTimeout(() => {
       endHold();
-      openAdminModal();
+      mountAdminAccessModal();
     }, REQUIRED_HOLD_MS);
   }
 
@@ -1078,97 +1545,379 @@ function setupHiddenAdminTrigger() {
     clearInterval(progressInterval);
     if (indicator) indicator.classList.add("hidden");
     if (bar) bar.style.width = "0%";
-    trigger.classList.remove("long-press-active");
   }
 
-  // دعم أحداث اللمس والماوس
   trigger.addEventListener("mousedown", startHold);
   trigger.addEventListener("mouseup", endHold);
   trigger.addEventListener("mouseleave", endHold);
-
-  trigger.addEventListener("touchstart", (e) => {
-    startHold(e);
-  }, { passive: true });
+  trigger.addEventListener("touchstart", startHold, { passive: true });
   trigger.addEventListener("touchend", endHold);
   trigger.addEventListener("touchcancel", endHold);
 }
 
-function openAdminModal() {
-  const modal = document.getElementById("adminAccessModal");
-  const input = document.getElementById("adminPasswordInput");
-  const feedback = document.getElementById("loginFeedback");
+function mountAdminAccessModal() {
+  const mount = document.getElementById("adminMountContainer");
+  if (!mount) return;
 
-  if (modal) modal.classList.remove("hidden");
-  if (feedback) feedback.classList.add("hidden");
-  if (input) {
-    input.value = "";
-    input.focus();
+  mount.style.display = "block";
+  mount.innerHTML = `
+    <div id="adminAccessModal" class="fixed inset-0 z-50 bg-black/75 backdrop-blur-md flex items-center justify-center p-3 select-none">
+      <div class="bg-gradient-to-b from-slate-900 to-slate-950 text-white rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-slate-700/80 space-y-4">
+        <div class="text-center space-y-1">
+          <div class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-amber-500 to-emerald-500 mx-auto flex items-center justify-center text-slate-950 text-xl font-black shadow-lg mb-2">
+            <i class="fa-solid fa-shield-halved"></i>
+          </div>
+          <h3 class="text-base sm:text-lg font-black text-white tracking-wide font-sans">
+            Welcome Engineer Mohamed Youssef
+          </h3>
+          <p class="text-[11px] text-emerald-400 font-bold">
+            لوحة التحكم السحابية وإدارة الأسعار
+          </p>
+        </div>
+
+        <form id="adminLoginForm" class="space-y-3 pt-2">
+          <div class="relative">
+            <input
+              type="password"
+              id="adminPasswordInput"
+              placeholder="أدخل كلمة المرور..."
+              class="w-full text-center text-xs sm:text-sm bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 font-mono"
+              autocomplete="current-password"
+              required
+            />
+            <button type="button" id="togglePasswordVisibilityBtn" class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 hover:text-white">
+              <i class="fa-regular fa-eye text-xs"></i>
+            </button>
+          </div>
+          <div id="loginFeedback" class="hidden text-center text-xs font-bold text-rose-400"></div>
+          <button type="submit" class="w-full bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-black text-xs sm:text-sm py-3 rounded-xl shadow-lg transition-all">
+            دخول لوحة التحكم
+          </button>
+          <button type="button" id="closeAdminModalBtn" class="w-full text-center text-xs text-slate-400 hover:text-slate-200 py-1">
+            إغلاق
+          </button>
+        </form>
+
+        <div class="text-center text-[10px] text-slate-500 pt-1 border-t border-slate-800">
+          المحاولات المتبقية: <span id="loginAttemptsLeft" class="text-amber-400 font-bold">${Math.max(0, 3 - failedLoginAttempts)}</span>
+        </div>
+      </div>
+    </div>
+  `;
+
+  document.getElementById("adminPasswordInput")?.focus();
+  document.getElementById("adminLoginForm")?.addEventListener("submit", handleAdminLogin);
+  document.getElementById("closeAdminModalBtn")?.addEventListener("click", unmountAdminContainer);
+  document.getElementById("togglePasswordVisibilityBtn")?.addEventListener("click", () => {
+    const inp = document.getElementById("adminPasswordInput");
+    if (inp) inp.type = inp.type === "password" ? "text" : "password";
+  });
+}
+
+function unmountAdminContainer() {
+  const mount = document.getElementById("adminMountContainer");
+  if (mount) {
+    mount.innerHTML = "";
+    mount.style.display = "none";
   }
-}
-
-function closeAdminModal() {
-  const modal = document.getElementById("adminAccessModal");
-  if (modal) modal.classList.add("hidden");
-}
-
-// دالة تشفير SHA-256 للمقارنة الآمنة في الواجهة
-async function sha256(str) {
-  const buffer = new TextEncoder().encode(str);
-  const hashBuffer = await crypto.subtle.digest("SHA-256", buffer);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
 }
 
 async function handleAdminLogin(e) {
   e.preventDefault();
-  const passwordInput = document.getElementById("adminPasswordInput");
+  const input = document.getElementById("adminPasswordInput");
   const feedback = document.getElementById("loginFeedback");
   const attemptsBadge = document.getElementById("loginAttemptsLeft");
+  if (!input) return;
 
-  if (!passwordInput) return;
-  const enteredPass = passwordInput.value;
-
-  const enteredHash = await sha256(enteredPass);
-
-  if (enteredHash === ADMIN_PASSWORD_HASH) {
-    // نجاح تسجيل الدخول
+  const hashed = await computeSha256(input.value);
+  if (hashed === _A_H) {
     isAdminAuthenticated = true;
     failedLoginAttempts = 0;
-    closeAdminModal();
-    revealAdminPanel();
-    showToastNotification("مرحباً بك يا باشمهندس محمد يوسف، تم تفعيل لوحة الإدارة السحابية.");
+    activeAdminProfile = _P_LIST[0];
+    mountFullAdminPanel();
+    showToastNotification("تم التحقق بنجاح! أهلاً بك في لوحة الإدارة السحابية.");
   } else {
-    // فشل التحقق
     failedLoginAttempts += 1;
     const remaining = Math.max(0, 3 - failedLoginAttempts);
-
-    if (attemptsBadge) attemptsBadge.textContent = remaining;
-
+    if (attemptsBadge) attemptsBadge.textContent = String(remaining);
     if (feedback) {
       feedback.textContent = `كلمة المرور غير صحيحة! متبقي ${remaining} محاولات.`;
       feedback.classList.remove("hidden");
     }
-
     if (failedLoginAttempts >= 3) {
       setTimeout(() => {
-        closeAdminModal();
         failedLoginAttempts = 0;
-        if (attemptsBadge) attemptsBadge.textContent = "3";
-        showToastNotification("تم إغلاق البوابة الإدارية لتجاوز الحد المسموح من المحاولات.");
-      }, 1000);
+        unmountAdminContainer();
+        showToastNotification("تم إغلاق النافذة لتجاوز الحد المسموح من المحاولات.");
+      }, 900);
     }
   }
 }
 
-// =========================================================================
-// 10. شاشات لوحة الإدارة المتكاملة (Admin Panel View)
-// =========================================================================
-function revealAdminPanel() {
+function mountFullAdminPanel() {
   const publicScreen = document.getElementById("publicStorefront");
-  const adminScreen = document.getElementById("adminPanelScreen");
+  const mount = document.getElementById("adminMountContainer");
+  if (!mount) return;
 
   if (publicScreen) publicScreen.classList.add("hidden");
-  if (adminScreen) adminScreen.classList.remove("hidden");
+  mount.style.display = "block";
+
+  mount.innerHTML = `
+    <section id="adminPanelScreen" class="min-h-screen bg-slate-900 text-slate-100 p-3 sm:p-6 pb-24">
+      <div class="max-w-7xl mx-auto space-y-5">
+
+        <!-- ترويسة لوحة الإدارة -->
+        <div class="bg-slate-800/90 rounded-2xl p-4 sm:p-5 border border-slate-700 shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+          <div class="space-y-1">
+            <div class="flex flex-wrap items-center gap-2">
+              <span class="bg-emerald-500/20 text-emerald-300 text-xs font-bold px-2.5 py-0.5 rounded-full border border-emerald-500/30">
+                <i class="fa-solid fa-shield-halved ml-1"></i> لوحة الإدارة السحابية
+              </span>
+              <span class="bg-amber-500/20 text-amber-300 text-xs font-bold px-2.5 py-0.5 rounded-full border border-amber-500/30">
+                ${escapeHtml(activeAdminProfile)}
+              </span>
+            </div>
+            <h2 class="text-lg sm:text-2xl font-black text-white font-tajawal">
+              إدارة مكتبة نهر العلم - أ/ إيهاب
+            </h2>
+            <p class="text-xs text-slate-400">
+              إدارة المنتجات، روابط الصور، الأسعار، الإعلانات المصورة، وتقارير الـ PDF لحظياً.
+            </p>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-2">
+            <button id="adminGeneratePdfBtn" class="flex items-center gap-1.5 bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs py-2 px-3.5 rounded-xl shadow-md transition-all">
+              <i class="fa-solid fa-file-invoice"></i>
+              <span>بيان فوري بالأسعار</span>
+            </button>
+            <button id="adminLogoutBtn" class="flex items-center gap-1.5 bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs py-2 px-3.5 rounded-xl shadow-md transition-all">
+              <i class="fa-solid fa-right-from-bracket"></i>
+              <span>تسجيل الخروج</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- إحصائيات المتجر -->
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <div class="bg-slate-800 rounded-2xl p-4 border border-slate-700">
+            <div class="flex items-center justify-between text-slate-400 mb-1 text-xs font-bold">
+              <span>إجمالي المنتجات والكتب</span>
+              <i class="fa-solid fa-book text-emerald-400"></i>
+            </div>
+            <div class="text-2xl font-black text-white" id="statTotalBooks">0</div>
+          </div>
+          <div class="bg-slate-800 rounded-2xl p-4 border border-slate-700">
+            <div class="flex items-center justify-between text-slate-400 mb-1 text-xs font-bold">
+              <span>الإعلانات النشطة</span>
+              <i class="fa-solid fa-bullhorn text-amber-400"></i>
+            </div>
+            <div class="text-2xl font-black text-white" id="statActiveBanners">1</div>
+          </div>
+          <div class="bg-slate-800 rounded-2xl p-4 border border-slate-700">
+            <div class="flex items-center justify-between text-slate-400 mb-1 text-xs font-bold">
+              <span>المزامنة السحابية</span>
+              <i class="fa-solid fa-cloud text-sky-400"></i>
+            </div>
+            <div class="text-sm font-black text-white truncate" id="statFirebaseStatus">Firebase Live Sync</div>
+          </div>
+          <div class="bg-slate-800 rounded-2xl p-4 border border-slate-700">
+            <div class="flex items-center justify-between text-slate-400 mb-1 text-xs font-bold">
+              <span>الأكثر طلباً ونقراً</span>
+              <i class="fa-solid fa-fire text-rose-400"></i>
+            </div>
+            <div class="text-sm font-black text-white truncate" id="statTopBook">-</div>
+          </div>
+        </div>
+
+        <!-- تبويبات الإدارة -->
+        <div class="flex items-center gap-2 border-b border-slate-700 pb-2 overflow-x-auto custom-scroll">
+          <button data-admin-tab="prices" class="admin-tab-btn active bg-emerald-600 text-white text-xs font-bold px-4 py-2 rounded-xl flex items-center gap-1.5">
+            <i class="fa-solid fa-tags"></i><span>المنتجات والأسعار والصور</span>
+          </button>
+          <button data-admin-tab="printingRates" class="admin-tab-btn bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold px-4 py-2 rounded-xl flex items-center gap-1.5">
+            <i class="fa-solid fa-print"></i><span>تسعيرة الطباعة</span>
+          </button>
+          <button data-admin-tab="announcement" class="admin-tab-btn bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold px-4 py-2 rounded-xl flex items-center gap-1.5">
+            <i class="fa-solid fa-bullhorn"></i><span>الإعلانات والبانر المصور</span>
+          </button>
+        </div>
+
+        <!-- تبويب 1: جدول الأسعار والصور -->
+        <div id="adminTabPrices" class="space-y-4">
+          <div class="bg-slate-800 rounded-2xl p-4 border border-slate-700 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+            <input type="text" id="adminTableSearch" placeholder="ابحث في جدول الإدارة بالاسم أو الصف أو القسم..." class="flex-1 text-xs sm:text-sm bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white focus:ring-2 focus:ring-emerald-500" />
+            <div class="flex items-center gap-2">
+              <button id="adminAddNewBookBtn" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs py-2 px-3 rounded-xl flex items-center gap-1.5">
+                <i class="fa-solid fa-plus"></i><span>إضافة منتج جديد</span>
+              </button>
+              <button id="adminSaveAllPricesBtn" class="bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs py-2 px-3 rounded-xl flex items-center gap-1.5">
+                <i class="fa-solid fa-cloud-arrow-up"></i><span>حفظ ومزامنة الكل</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="bg-slate-800 rounded-2xl border border-slate-700 overflow-hidden shadow-xl">
+            <div class="overflow-x-auto custom-scroll">
+              <table class="w-full text-right text-xs">
+                <thead class="bg-slate-900 text-slate-400 font-bold border-b border-slate-700">
+                  <tr>
+                    <th class="p-3">المنتج / الكتاب</th>
+                    <th class="p-3">القسم والصف</th>
+                    <th class="p-3">رابط الصورة (Image URL)</th>
+                    <th class="p-3">السعر (ج.م)</th>
+                    <th class="p-3">التوفر</th>
+                    <th class="p-3 text-center">إجراء</th>
+                  </tr>
+                </thead>
+                <tbody id="adminPricesTableBody" class="divide-y divide-slate-700/60"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- تبويب 2: تسعيرة الطباعة -->
+        <div id="adminTabPrintingRates" class="hidden bg-slate-800 rounded-2xl p-5 border border-slate-700 max-w-2xl">
+          <h3 class="text-base font-black text-white mb-3">تعديل تسعيرة الطباعة والتغليف</h3>
+          <form id="printingRatesForm" class="space-y-3">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label class="block text-xs font-bold text-slate-300 mb-1">سعر الصفحة أبيض وأسود (ج.م):</label>
+                <input type="number" step="0.05" id="rateBwPage" class="w-full text-xs bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white font-bold" />
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-slate-300 mb-1">سعر الصفحة ألوان (ج.م):</label>
+                <input type="number" step="0.10" id="rateColorPage" class="w-full text-xs bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white font-bold" />
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-slate-300 mb-1">تدبيس (ج.م):</label>
+                <input type="number" step="0.50" id="rateBindingStaple" class="w-full text-xs bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white font-bold" />
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-slate-300 mb-1">تغليف بلاستيك (ج.م):</label>
+                <input type="number" step="1" id="rateBindingPlastic" class="w-full text-xs bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white font-bold" />
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-slate-300 mb-1">تغليف سلك حديد (ج.م):</label>
+                <input type="number" step="1" id="rateBindingWire" class="w-full text-xs bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white font-bold" />
+              </div>
+            </div>
+            <button type="submit" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs py-2.5 px-4 rounded-xl">
+              حفظ تسعيرة الطباعة ونشرها
+            </button>
+          </form>
+        </div>
+
+        <!-- تبويب 3: منشئ الإعلانات والبانر -->
+        <div id="adminTabAnnouncement" class="hidden bg-slate-800 rounded-2xl p-5 border border-slate-700 max-w-2xl">
+          <h3 class="text-base font-black text-white mb-3">إعداد شريط الإعلانات والبانر الترويجي</h3>
+          <form id="announcementForm" class="space-y-3">
+            <div>
+              <label class="block text-xs font-bold text-slate-300 mb-1">نص الإعلان أو العرض:</label>
+              <textarea id="adminAnnouncementInput" rows="3" class="w-full text-xs bg-slate-900 border border-slate-700 rounded-xl p-3 text-white"></textarea>
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-300 mb-1">رابط صورة البانر الإعلاني (اختياري):</label>
+              <input type="url" id="adminBannerImageInput" placeholder="https://example.com/offer-banner.jpg" class="w-full text-xs bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white font-mono" dir="ltr" />
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label class="block text-xs font-bold text-slate-300 mb-1">عنوان الشارة:</label>
+                <input type="text" id="adminBadgeInput" class="w-full text-xs bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white" />
+              </div>
+              <div class="flex items-center gap-2 pt-5">
+                <input type="checkbox" id="adminBannerActiveCheckbox" class="w-4 h-4 rounded" />
+                <label for="adminBannerActiveCheckbox" class="text-xs font-bold text-slate-200">تفعيل الشريط والإعلان للزوار</label>
+              </div>
+            </div>
+            <button type="submit" class="bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs py-2.5 px-4 rounded-xl">
+              نشر الإعلان فوراً
+            </button>
+          </form>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- نافذة إضافة منتج جديد (ديناميكية) -->
+    <div id="addNewBookModal" class="hidden fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-3">
+      <div class="bg-slate-900 text-white rounded-3xl max-w-md w-full p-5 shadow-2xl border border-slate-700 space-y-3 max-h-[90vh] overflow-y-auto custom-scroll">
+        <div class="flex items-center justify-between pb-2 border-b border-slate-800">
+          <h3 class="text-sm font-black">إضافة كتاب أو منتج جديد</h3>
+          <button id="closeNewBookModalBtn" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <form id="addNewBookForm" class="space-y-2.5">
+          <input type="text" id="newBookTitle" placeholder="اسم الكتاب أو المنتج *" class="w-full text-xs bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white" required />
+          <div class="grid grid-cols-2 gap-2">
+            <select id="newBookCategory" class="w-full text-xs bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white">
+              <option value="books">الكتب الخارجية</option>
+              <option value="supplies">باكدجات السبلايز</option>
+              <option value="stationery">الأدوات المكتبية والكراريس</option>
+              <option value="gifts">الهدايا والألعاب</option>
+              <option value="printing">خدمات الطباعة</option>
+            </select>
+            <select id="newBookStage" class="w-full text-xs bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white">
+              <option value="ابتدائي">ابتدائي</option>
+              <option value="إعدادي">إعدادي</option>
+              <option value="ثانوي">ثانوي</option>
+              <option value="كي جي">كي جي</option>
+              <option value="عام">عام</option>
+            </select>
+          </div>
+          <div class="grid grid-cols-2 gap-2">
+            <input type="text" id="newBookGrade" placeholder="الصف / الفئة *" class="w-full text-xs bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white" required />
+            <input type="text" id="newBookSubject" placeholder="المادة / النوع *" class="w-full text-xs bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white" required />
+          </div>
+          <div class="grid grid-cols-2 gap-2">
+            <input type="text" id="newBookSeries" placeholder="دار النشر / السلسلة" class="w-full text-xs bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white" />
+            <input type="number" min="0" step="1" id="newBookPrice" placeholder="السعر (ج.م) *" class="w-full text-xs bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white font-bold" required />
+          </div>
+          <input type="url" id="newBookImageUrl" placeholder="رابط صورة المنتج (اختياري) https://..." class="w-full text-xs bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white font-mono" dir="ltr" />
+          <div class="grid grid-cols-2 gap-2">
+            <input type="number" min="0" step="1" id="newBookOriginalPrice" placeholder="السعر قبل الخصم (اختياري)" class="w-full text-xs bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white" />
+            <select id="newBookStock" class="w-full text-xs bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white">
+              <option value="متوفر بالمكتبة">متوفر بالمكتبة</option>
+              <option value="كمية محدودة">كمية محدودة</option>
+              <option value="قيد التجهيز">قيد التجهيز</option>
+            </select>
+          </div>
+          <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs py-2.5 rounded-xl">
+            حفظ وإضافة للمتجر
+          </button>
+        </form>
+      </div>
+    </div>
+  `;
+
+  // ربط أحداث لوحة الإدارة الديناميكية
+  document.getElementById("adminLogoutBtn")?.addEventListener("click", handleAdminLogout);
+  document.getElementById("adminGeneratePdfBtn")?.addEventListener("click", generatePrintablePriceReport);
+  document.getElementById("adminSaveAllPricesBtn")?.addEventListener("click", saveAllPricesFromTable);
+  document.getElementById("adminTableSearch")?.addEventListener("input", renderAdminPricesTable);
+  document.getElementById("adminAddNewBookBtn")?.addEventListener("click", () => {
+    document.getElementById("addNewBookModal")?.classList.remove("hidden");
+  });
+  document.getElementById("closeNewBookModalBtn")?.addEventListener("click", () => {
+    document.getElementById("addNewBookModal")?.classList.add("hidden");
+  });
+  document.getElementById("addNewBookForm")?.addEventListener("submit", handleAddNewBook);
+  document.getElementById("printingRatesForm")?.addEventListener("submit", handleSavePrintingRates);
+  document.getElementById("announcementForm")?.addEventListener("submit", handleSaveAnnouncement);
+
+  document.querySelectorAll(".admin-tab-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll(".admin-tab-btn").forEach((b) => {
+        b.classList.remove("active", "bg-emerald-600", "text-white");
+        b.classList.add("bg-slate-800", "text-slate-300");
+      });
+      btn.classList.add("active", "bg-emerald-600", "text-white");
+      btn.classList.remove("bg-slate-800", "text-slate-300");
+
+      const tab = btn.dataset.adminTab;
+      document.getElementById("adminTabPrices")?.classList.toggle("hidden", tab !== "prices");
+      document.getElementById("adminTabPrintingRates")?.classList.toggle("hidden", tab !== "printingRates");
+      document.getElementById("adminTabAnnouncement")?.classList.toggle("hidden", tab !== "announcement");
+    });
+  });
 
   renderAdminPricesTable();
   populatePrintingRatesForm();
@@ -1177,21 +1926,15 @@ function revealAdminPanel() {
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
-function hideAdminPanel() {
-  const publicScreen = document.getElementById("publicStorefront");
-  const adminScreen = document.getElementById("adminPanelScreen");
-
-  if (publicScreen) publicScreen.classList.remove("hidden");
-  if (adminScreen) adminScreen.classList.add("hidden");
-
-  renderCatalogGrid();
-  window.scrollTo({ top: 0, behavior: "smooth" });
-}
-
 function handleAdminLogout() {
   isAdminAuthenticated = false;
-  hideAdminPanel();
-  showToastNotification("تم تسجيل الخروج وقفل لوحة الإدارة بنجاح.");
+  activeAdminProfile = "";
+  unmountAdminContainer();
+  const publicScreen = document.getElementById("publicStorefront");
+  if (publicScreen) publicScreen.classList.remove("hidden");
+  refreshStorefrontViews();
+  window.scrollTo({ top: 0, behavior: "smooth" });
+  showToastNotification("تم تسجيل الخروج وتأمين لوحة الإدارة بنجاح.");
 }
 
 function renderAdminPricesTable() {
@@ -1199,89 +1942,100 @@ function renderAdminPricesTable() {
   const search = document.getElementById("adminTableSearch")?.value.toLowerCase().trim() || "";
   if (!tbody) return;
 
-  const filtered = currentBooks.filter(b => {
-    return b.title.toLowerCase().includes(search) ||
-           b.grade.toLowerCase().includes(search) ||
-           b.subject.toLowerCase().includes(search) ||
-           b.stage.toLowerCase().includes(search);
+  const filtered = currentBooks.filter((b) => {
+    const line = `${b.title} ${b.grade} ${b.subject} ${b.stage} ${b.series} ${b.category}`.toLowerCase();
+    return line.includes(search);
   });
 
-  tbody.innerHTML = filtered.map(b => {
-    return `
-      <tr class="hover:bg-slate-700/50 transition-colors">
-        <td class="p-3 font-bold text-white">${b.title}</td>
-        <td class="p-3 text-slate-300">${b.stage}</td>
-        <td class="p-3 text-slate-300">${b.grade}</td>
-        <td class="p-3 text-slate-300">${b.subject} (${b.series})</td>
-        <td class="p-3">
-          <div class="flex items-center gap-1.5">
-            <input 
-              type="number" 
-              id="adminPriceInput_${b.id}" 
-              value="${b.price}" 
-              class="w-20 bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-white font-bold text-xs focus:ring-1 focus:ring-emerald-500" 
-            />
-            <span class="text-slate-400 text-xs">ج.م</span>
-          </div>
+  tbody.innerHTML = filtered
+    .map((b) => `
+      <tr class="hover:bg-slate-700/40 transition-colors">
+        <td class="p-3 font-bold text-white min-w-[180px]">${escapeHtml(b.title)}</td>
+        <td class="p-3 text-slate-300 whitespace-nowrap">${escapeHtml(b.stage)} • ${escapeHtml(b.grade)}</td>
+        <td class="p-3 min-w-[170px]">
+          <input
+            type="url"
+            id="adminImgInput_${escapeHtml(b.id)}"
+            value="${escapeHtml(b.imageUrl || "")}"
+            placeholder="رابط صورة المنتج..."
+            dir="ltr"
+            class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-white text-[11px] font-mono"
+          />
+        </td>
+        <td class="p-3 whitespace-nowrap">
+          <input
+            type="number"
+            id="adminPriceInput_${escapeHtml(b.id)}"
+            value="${b.price}"
+            class="w-20 bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-white font-bold text-xs"
+          />
         </td>
         <td class="p-3">
-          <select id="adminStockSelect_${b.id}" class="bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-xs text-slate-200">
-            <option value="متوفر بالمكتبة" ${b.stock === 'متوفر بالمكتبة' ? 'selected' : ''}>متوفر بالمكتبة</option>
-            <option value="كمية محدودة" ${b.stock === 'كمية محدودة' ? 'selected' : ''}>كمية محدودة</option>
-            <option value="قيد التجهيز" ${b.stock === 'قيد التجهيز' ? 'selected' : ''}>قيد التجهيز</option>
+          <select id="adminStockSelect_${escapeHtml(b.id)}" class="bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-xs text-slate-200">
+            <option value="متوفر بالمكتبة" ${b.stock === "متوفر بالمكتبة" ? "selected" : ""}>متوفر بالمكتبة</option>
+            <option value="كمية محدودة" ${b.stock === "كمية محدودة" ? "selected" : ""}>كمية محدودة</option>
+            <option value="قيد التجهيز" ${b.stock === "قيد التجهيز" ? "selected" : ""}>قيد التجهيز</option>
           </select>
         </td>
-        <td class="p-3 text-center">
-          <button 
-            onclick="saveSingleBookPrice('${b.id}')"
-            class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs py-1 px-3 rounded-lg transition-all">
+        <td class="p-3 text-center whitespace-nowrap space-x-1 space-x-reverse">
+          <button onclick="saveSingleBookRow('${escapeHtml(b.id)}')" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs py-1 px-2.5 rounded-lg">
             حفظ
+          </button>
+          <button onclick="deleteBookRow('${escapeHtml(b.id)}')" title="حذف" class="bg-rose-600/80 hover:bg-rose-600 text-white font-bold text-xs py-1 px-2 rounded-lg">
+            <i class="fa-solid fa-trash"></i>
           </button>
         </td>
       </tr>
-    `;
-  }).join("");
+    `)
+    .join("");
 }
 
-function saveSingleBookPrice(bookId) {
+function saveSingleBookRow(bookId) {
+  const item = currentBooks.find((b) => b.id === bookId);
   const priceInput = document.getElementById(`adminPriceInput_${bookId}`);
+  const imgInput = document.getElementById(`adminImgInput_${bookId}`);
   const stockSelect = document.getElementById(`adminStockSelect_${bookId}`);
-
-  const item = currentBooks.find(b => b.id === bookId);
   if (!item || !priceInput) return;
 
   const newPrice = parseFloat(priceInput.value);
   if (isNaN(newPrice) || newPrice < 0) {
-    alert("يرجى إدخال سعر صحيح!");
+    showToastNotification("يرجى إدخال سعر صحيح!");
     return;
   }
 
   item.price = newPrice;
+  if (imgInput) item.imageUrl = imgInput.value.trim();
   if (stockSelect) item.stock = stockSelect.value;
 
   persistBooksData();
-  renderCatalogGrid();
-  renderAdminPricesTable();
-  updateAdminStats();
-  showToastNotification(`تم تحديث سعر "${item.title}" إلى ${newPrice} ج.م ومزامنته سحابياً!`);
+  refreshStorefrontViews();
+  showToastNotification(`تم حفظ وتحديث "${item.title}" لحظياً!`);
+}
+
+function deleteBookRow(bookId) {
+  if (!confirm("هل تريد حذف هذا المنتج من المتجر؟")) return;
+  currentBooks = currentBooks.filter((b) => b.id !== bookId);
+  persistBooksData();
+  refreshStorefrontViews();
+  showToastNotification("تم حذف المنتج بنجاح.");
 }
 
 function saveAllPricesFromTable() {
-  currentBooks.forEach(b => {
+  currentBooks.forEach((b) => {
     const pInput = document.getElementById(`adminPriceInput_${b.id}`);
+    const iInput = document.getElementById(`adminImgInput_${b.id}`);
     const sSelect = document.getElementById(`adminStockSelect_${b.id}`);
     if (pInput) {
       const p = parseFloat(pInput.value);
       if (!isNaN(p) && p >= 0) b.price = p;
     }
+    if (iInput) b.imageUrl = iInput.value.trim();
     if (sSelect) b.stock = sSelect.value;
   });
 
   persistBooksData();
-  renderCatalogGrid();
-  renderAdminPricesTable();
-  updateAdminStats();
-  showToastNotification("تمت مزامنة كافة تعديلات الأسعار بنجاح!");
+  refreshStorefrontViews();
+  showToastNotification("تمت مزامنة كافة التعديلات والأسعار والصور سحابياً!");
 }
 
 function populatePrintingRatesForm() {
@@ -1308,48 +2062,32 @@ function handleSavePrintingRates(e) {
 
   persistPrintRates();
   updatePrintCalculator();
-  showToastNotification("تم حفظ تسعيرة الطباعة ونشرها سحابياً!");
+  showToastNotification("تم حفظ تسعيرة الطباعة وتحديث الحاسبة للزوار!");
 }
 
 function populateAnnouncementForm() {
   const input = document.getElementById("adminAnnouncementInput");
+  const bannerImg = document.getElementById("adminBannerImageInput");
   const badge = document.getElementById("adminBadgeInput");
   const checkbox = document.getElementById("adminBannerActiveCheckbox");
 
-  if (input) input.value = currentAnnouncement.text;
-  if (badge) badge.value = currentAnnouncement.badge;
-  if (checkbox) checkbox.checked = currentAnnouncement.active;
+  if (input) input.value = currentAnnouncement.text || "";
+  if (bannerImg) bannerImg.value = currentAnnouncement.bannerImageUrl || "";
+  if (badge) badge.value = currentAnnouncement.badge || "";
+  if (checkbox) checkbox.checked = Boolean(currentAnnouncement.active);
 }
 
 function handleSaveAnnouncement(e) {
   e.preventDefault();
-  const input = document.getElementById("adminAnnouncementInput");
-  const badge = document.getElementById("adminBadgeInput");
-  const checkbox = document.getElementById("adminBannerActiveCheckbox");
-
-  currentAnnouncement.text = input?.value || "";
-  currentAnnouncement.badge = badge?.value || "تنويه";
-  currentAnnouncement.active = checkbox ? checkbox.checked : true;
+  currentAnnouncement.text = document.getElementById("adminAnnouncementInput")?.value.trim() || "";
+  currentAnnouncement.bannerImageUrl = document.getElementById("adminBannerImageInput")?.value.trim() || "";
+  currentAnnouncement.badge = document.getElementById("adminBadgeInput")?.value.trim() || "تنويه";
+  currentAnnouncement.active = document.getElementById("adminBannerActiveCheckbox")?.checked ?? true;
 
   persistAnnouncement();
   renderAnnouncementBanner();
-  showToastNotification("تم تحديث ونشر شريط الإعلانات للزوار!");
-}
-
-function renderAnnouncementBanner() {
-  const banner = document.getElementById("liveAnnouncementBanner");
-  const text = document.getElementById("announcementText");
-  const badge = document.getElementById("announcementBadge");
-
-  if (!banner) return;
-
-  if (!currentAnnouncement.active || !currentAnnouncement.text.trim()) {
-    banner.classList.add("hidden");
-  } else {
-    banner.classList.remove("hidden");
-    if (text) text.textContent = currentAnnouncement.text;
-    if (badge) badge.innerHTML = `<i class="fa-solid fa-bullhorn text-[9px] mr-1"></i> ${currentAnnouncement.badge}`;
-  }
+  updateAdminStats();
+  showToastNotification("تم نشر الإعلان وتحديثه في واجهة المتجر!");
 }
 
 function updateAdminStats() {
@@ -1357,104 +2095,124 @@ function updateAdminStats() {
   const statActiveBanners = document.getElementById("statActiveBanners");
   const statTopBook = document.getElementById("statTopBook");
 
-  if (statTotal) statTotal.textContent = currentBooks.length;
+  if (statTotal) statTotal.textContent = String(currentBooks.length);
   if (statActiveBanners) statActiveBanners.textContent = currentAnnouncement.active ? "1" : "0";
-
   if (statTopBook && currentBooks.length > 0) {
     const sorted = [...currentBooks].sort((a, b) => (b.clicks || 0) - (a.clicks || 0));
-    statTopBook.textContent = sorted[0].title.split("-")[0].trim();
+    statTopBook.textContent = sorted[0].title;
   }
 }
 
-// إضافة كتاب جديد من لوحة الإدارة
 function handleAddNewBook(e) {
   e.preventDefault();
   const title = document.getElementById("newBookTitle")?.value.trim();
-  const stage = document.getElementById("newBookStage")?.value;
+  const category = document.getElementById("newBookCategory")?.value || "books";
+  const stage = document.getElementById("newBookStage")?.value || "ابتدائي";
   const grade = document.getElementById("newBookGrade")?.value.trim();
   const subject = document.getElementById("newBookSubject")?.value.trim();
-  const series = document.getElementById("newBookSeries")?.value.trim();
+  const series = document.getElementById("newBookSeries")?.value.trim() || "مكتبة نهر العلم";
   const price = parseFloat(document.getElementById("newBookPrice")?.value) || 0;
-  const stock = document.getElementById("newBookStock")?.value;
+  const origPriceVal = parseFloat(document.getElementById("newBookOriginalPrice")?.value);
+  const imageUrl = document.getElementById("newBookImageUrl")?.value.trim() || "";
+  const stock = document.getElementById("newBookStock")?.value || "متوفر بالمكتبة";
 
   if (!title || !grade || !subject) {
-    alert("يرجى ملء كافة الحقول الأساسية!");
+    showToastNotification("يرجى تعبئة الاسم والصف والمادة!");
     return;
   }
 
-  const newBook = {
-    id: `b-custom-${Date.now()}`,
+  const newItem = {
+    id: `item-${Date.now()}`,
     title,
+    category,
     stage,
     grade,
     subject,
-    series: series || "أخرى",
+    series,
     price,
+    originalPrice: !isNaN(origPriceVal) && origPriceVal > price ? origPriceVal : null,
+    imageUrl,
     stock,
-    badge: "جديد بالمكتبة",
-    icon: "fa-book",
+    badge: "مضاف حديثاً",
+    isHotDeal: !isNaN(origPriceVal) && origPriceVal > price,
     clicks: 1
   };
 
-  currentBooks.unshift(newBook);
+  currentBooks.unshift(newItem);
   persistBooksData();
-  populateDropdownFilters();
-  renderCatalogGrid();
-  renderAdminPricesTable();
-  updateAdminStats();
+  refreshStorefrontViews();
 
   document.getElementById("addNewBookModal")?.classList.add("hidden");
   document.getElementById("addNewBookForm")?.reset();
-  showToastNotification(`تمت إضافة كتاب "${title}" إلى المتجر بنجاح!`);
+  showToastNotification(`تمت إضافة "${title}" بنجاح!`);
 }
 
-// توليد تقرير الأسعار الرسمي (PDF / Printable Report Generator)
 function generatePrintablePriceReport() {
-  const reportDate = document.getElementById("reportPrintDate");
-  const tbody = document.getElementById("printableReportTableBody");
   const reportArea = document.getElementById("printableReportArea");
+  if (!reportArea) return;
 
-  if (!tbody || !reportArea) return;
+  const today = new Date().toLocaleDateString("ar-EG");
+  const rowsHtml = currentBooks
+    .map((b, i) => `
+      <tr class="border-b border-slate-200">
+        <td class="p-2 border border-slate-300 font-bold">${i + 1}</td>
+        <td class="p-2 border border-slate-300 font-bold">${escapeHtml(b.title)}</td>
+        <td class="p-2 border border-slate-300">${escapeHtml(b.stage)} - ${escapeHtml(b.grade)}</td>
+        <td class="p-2 border border-slate-300">${escapeHtml(b.series)}</td>
+        <td class="p-2 border border-slate-300 font-black text-emerald-800">${b.price} ج.م</td>
+      </tr>
+    `)
+    .join("");
 
-  const now = new Date();
-  if (reportDate) {
-    reportDate.textContent = `تاريخ الإصدار: ${now.toLocaleDateString("ar-EG")}`;
-  }
-
-  tbody.innerHTML = currentBooks.map((b, i) => `
-    <tr class="border-b border-slate-200">
-      <td class="p-2 border border-slate-300 font-bold">${i + 1}</td>
-      <td class="p-2 border border-slate-300 font-bold">${b.title}</td>
-      <td class="p-2 border border-slate-300">${b.stage}</td>
-      <td class="p-2 border border-slate-300">${b.grade}</td>
-      <td class="p-2 border border-slate-300">${b.subject} (${b.series})</td>
-      <td class="p-2 border border-slate-300 font-black text-emerald-800">${b.price} ج.م</td>
-    </tr>
-  `).join("");
+  reportArea.innerHTML = `
+    <div class="p-6 max-w-4xl mx-auto space-y-4">
+      <div class="flex items-center justify-between border-b-2 border-slate-800 pb-3">
+        <div>
+          <h1 class="text-xl font-black">مكتبة نهر العلم - إدارة أ/ إيهاب</h1>
+          <p class="text-xs">بيان أسعار الكتب الخارجية والأدوات وباكدجات السبلايز</p>
+        </div>
+        <div class="text-left text-xs font-bold">
+          <p>هاتف وواتساب: 01002968331 - 01157706887</p>
+          <p>تاريخ الإصدار: ${today}</p>
+        </div>
+      </div>
+      <table class="w-full text-right text-xs border-collapse border border-slate-300">
+        <thead>
+          <tr class="bg-slate-100 border-b border-slate-300">
+            <th class="p-2 border border-slate-300">#</th>
+            <th class="p-2 border border-slate-300">المنتج / الكتاب</th>
+            <th class="p-2 border border-slate-300">المرحلة والصف</th>
+            <th class="p-2 border border-slate-300">دار النشر / السلسلة</th>
+            <th class="p-2 border border-slate-300">السعر الرسمي</th>
+          </tr>
+        </thead>
+        <tbody>${rowsHtml}</tbody>
+      </table>
+    </div>
+  `;
 
   reportArea.classList.remove("hidden");
   window.print();
   setTimeout(() => {
     reportArea.classList.add("hidden");
-  }, 1000);
+    reportArea.innerHTML = "";
+  }, 800);
 }
 
 // =========================================================================
-// 11. نافذة الإشعار السريع (Toast Notification Utility)
+// 14. إشعارات التطبيق العائمة (Toast Notifications)
 // =========================================================================
 function showToastNotification(msg) {
   let toast = document.getElementById("appToast");
   if (!toast) {
     toast = document.createElement("div");
     toast.id = "appToast";
-    toast.className = "fixed top-14 inset-x-4 max-w-sm mx-auto z-50 bg-slate-900/95 text-white text-xs font-bold py-2.5 px-4 rounded-2xl shadow-2xl border border-emerald-500/40 flex items-center gap-2 transform transition-all duration-300 -translate-y-10 opacity-0 pointer-events-none";
+    toast.className = "fixed top-16 inset-x-4 max-w-sm mx-auto z-50 bg-slate-900/95 text-white text-xs font-bold py-2.5 px-4 rounded-2xl shadow-2xl border border-emerald-500/40 flex items-center gap-2 transform transition-all duration-300 -translate-y-10 opacity-0 pointer-events-none";
     document.body.appendChild(toast);
   }
-
-  toast.innerHTML = `<i class="fa-solid fa-circle-check text-emerald-400 text-sm"></i><span>${msg}</span>`;
+  toast.innerHTML = `<i class="fa-solid fa-circle-check text-emerald-400 text-sm"></i><span>${escapeHtml(msg)}</span>`;
   toast.classList.remove("-translate-y-10", "opacity-0");
   toast.classList.add("translate-y-0", "opacity-100");
-
   setTimeout(() => {
     toast.classList.remove("translate-y-0", "opacity-100");
     toast.classList.add("-translate-y-10", "opacity-0");
@@ -1462,192 +2220,198 @@ function showToastNotification(msg) {
 }
 
 // =========================================================================
-// 12. ربط الأحداث وتشغيل التطبيق (DOM Content Loaded)
+// 15. نقطة تشغيل التطبيق وربط كافة الأحداث (Bootstrap)
 // =========================================================================
+function selectMainCategory(cat) {
+  activeCategory = cat;
+  document.querySelectorAll(".main-cat-tab").forEach((btn) => {
+    const isActive = btn.dataset.category === cat;
+    btn.classList.toggle("active", isActive);
+    btn.classList.toggle("bg-brand-navy", isActive);
+    btn.classList.toggle("text-white", isActive);
+    btn.classList.toggle("shadow-md", isActive);
+    btn.classList.toggle("bg-white", !isActive);
+    btn.classList.toggle("text-slate-700", !isActive);
+    btn.classList.toggle("border", !isActive);
+    btn.classList.toggle("border-slate-200", !isActive);
+  });
+
+  toggleEducationalFiltersVisibility();
+  populateDropdownFilters();
+  renderCatalogGrid();
+}
+
 document.addEventListener("DOMContentLoaded", () => {
-  // 1. تحميل الحالة والبيانات
+  // تهيئة البيانات والملحقات
+  configurePdfJsWorker();
   loadInitialState();
   initializeFirebase();
+  registerServiceWorkerSafely();
   renderAnnouncementBanner();
+  toggleEducationalFiltersVisibility();
   populateDropdownFilters();
+  renderHotDeals();
   renderCatalogGrid();
   updateCartBadges();
   updatePrintCalculator();
-
-  // 2. إعداد مشغل الدخول الإداري الخفي
   setupHiddenAdminTrigger();
+  handleInstallButtonVisibility();
 
-  // 3. ربط أحداث الفلاتر الثلاثية
+  // التقاط حدث تثبيت PWA للمتصفح
+  window.addEventListener("beforeinstallprompt", (e) => {
+    e.preventDefault();
+    deferredInstallPrompt = e;
+    handleInstallButtonVisibility();
+  });
+
+  document.getElementById("installAppBtn")?.addEventListener("click", async () => {
+    if (!deferredInstallPrompt) return;
+    deferredInstallPrompt.prompt();
+    await deferredInstallPrompt.userChoice;
+    deferredInstallPrompt = null;
+    handleInstallButtonVisibility();
+  });
+
+  // أحداث التبويب الرئيسي
+  document.querySelectorAll(".main-cat-tab").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      selectMainCategory(btn.dataset.category || "all");
+    });
+  });
+
+  // زر عرض باكدجات السبلايز من قسم العروض
+  document.getElementById("viewAllSuppliesDealsBtn")?.addEventListener("click", () => {
+    selectMainCategory("supplies");
+    document.getElementById("mainCategoryTabs")?.scrollIntoView({ behavior: "smooth" });
+  });
+
+  // أحداث شريط البحث الفوري
+  const searchInput = document.getElementById("liveSearchInput");
+  const clearSearchBtn = document.getElementById("clearSearchBtn");
+  searchInput?.addEventListener("input", (e) => {
+    searchQuery = e.target.value || "";
+    if (clearSearchBtn) clearSearchBtn.classList.toggle("hidden", !searchQuery);
+    renderCatalogGrid();
+  });
+
+  clearSearchBtn?.addEventListener("click", () => {
+    searchQuery = "";
+    if (searchInput) searchInput.value = "";
+    clearSearchBtn.classList.add("hidden");
+    renderCatalogGrid();
+  });
+
+  // أحداث الفلاتر الأربعة المشروطة
   document.getElementById("stageSelect")?.addEventListener("change", () => {
     populateDropdownFilters();
     renderCatalogGrid();
   });
-
   document.getElementById("gradeSelect")?.addEventListener("change", () => {
     populateDropdownFilters();
     renderCatalogGrid();
   });
+  document.getElementById("subjectSelect")?.addEventListener("change", renderCatalogGrid);
+  document.getElementById("publisherSelect")?.addEventListener("change", renderCatalogGrid);
 
-  document.getElementById("subjectSelect")?.addEventListener("change", () => {
-    renderCatalogGrid();
-  });
+  const resetAllFilters = () => {
+    searchQuery = "";
+    if (searchInput) searchInput.value = "";
+    if (clearSearchBtn) clearSearchBtn.classList.add("hidden");
+    const stageEl = document.getElementById("stageSelect");
+    const gradeEl = document.getElementById("gradeSelect");
+    const subjEl = document.getElementById("subjectSelect");
+    const pubEl = document.getElementById("publisherSelect");
+    if (stageEl) stageEl.value = "all";
+    if (gradeEl) gradeEl.value = "all";
+    if (subjEl) subjEl.value = "all";
+    if (pubEl) pubEl.value = "all";
+    selectMainCategory("all");
+  };
 
   document.getElementById("resetFiltersBtn")?.addEventListener("click", () => {
     document.getElementById("stageSelect").value = "all";
-    selectedSeriesFilter = "all";
-    document.querySelectorAll(".series-tag").forEach(b => {
-      b.classList.remove("active", "bg-brand-navy", "text-white");
-      b.classList.add("bg-slate-100", "text-slate-700");
-    });
-    const firstSeries = document.querySelector(".series-tag[data-series='all']");
-    if (firstSeries) {
-      firstSeries.classList.add("active", "bg-brand-navy", "text-white");
-    }
+    document.getElementById("gradeSelect").value = "all";
+    document.getElementById("subjectSelect").value = "all";
+    document.getElementById("publisherSelect").value = "all";
     populateDropdownFilters();
     renderCatalogGrid();
   });
+  document.getElementById("resetFromNoticeBtn")?.addEventListener("click", resetAllFilters);
 
-  document.getElementById("resetFromNoticeBtn")?.addEventListener("click", () => {
-    document.getElementById("resetFiltersBtn")?.click();
-  });
-
-  // فلاتر السلاسل السريعة
-  document.querySelectorAll(".series-tag").forEach(btn => {
-    btn.addEventListener("click", () => {
-      document.querySelectorAll(".series-tag").forEach(b => {
-        b.classList.remove("active", "bg-brand-navy", "text-white");
-        b.classList.add("bg-slate-100", "text-slate-700");
-      });
-      btn.classList.add("active", "bg-brand-navy", "text-white");
-      btn.classList.remove("bg-slate-100", "text-slate-700");
-
-      selectedSeriesFilter = btn.dataset.series || "all";
-      renderCatalogGrid();
-    });
-  });
-
-  // 4. أزرار السلة (Smart Cart Modal)
-  document.getElementById("openCartBtn")?.addEventListener("click", () => {
+  // أحداث سلة الطلبات والتوصيل
+  const openCart = () => {
     document.getElementById("cartDrawer")?.classList.remove("hidden");
     renderCartDrawer();
-  });
-
+  };
+  document.getElementById("openCartBtn")?.addEventListener("click", openCart);
+  document.getElementById("navBottomCart")?.addEventListener("click", openCart);
   document.getElementById("closeCartBtn")?.addEventListener("click", () => {
     document.getElementById("cartDrawer")?.classList.add("hidden");
   });
-
   document.getElementById("browseBooksFromCartBtn")?.addEventListener("click", () => {
     document.getElementById("cartDrawer")?.classList.add("hidden");
   });
-
   document.getElementById("clearCartBtn")?.addEventListener("click", () => {
-    if (confirm("هل ترغب حقاً في إفراغ سلة الطلبات؟")) {
-      clearCart();
-    }
+    if (confirm("هل ترغب في إفراغ السلة بالكامل؟")) clearCart();
   });
-
   document.getElementById("checkoutWhatsAppBtn")?.addEventListener("click", sendCartOrderWhatsApp);
 
-  // 5. نافذة خدمة اطبع مذكرتك (Print Modal)
+  document.querySelectorAll('input[name="deliveryMethod"]').forEach((radio) => {
+    radio.addEventListener("change", (e) => {
+      const addressWrapper = document.getElementById("cartDeliveryAddressWrapper");
+      if (addressWrapper) {
+        addressWrapper.classList.toggle("hidden", e.target.value !== "delivery");
+      }
+    });
+  });
+
+  // أحداث الطباعة الذكية (PDF.js)
   const openPrint = () => {
     document.getElementById("printModal")?.classList.remove("hidden");
     updatePrintCalculator();
   };
-
   document.getElementById("openPrintModalBtn")?.addEventListener("click", openPrint);
   document.getElementById("heroPrintBtn")?.addEventListener("click", openPrint);
   document.getElementById("navBottomPrint")?.addEventListener("click", openPrint);
-
+  document.getElementById("printingTabOpenCalcBtn")?.addEventListener("click", openPrint);
   document.getElementById("closePrintModalBtn")?.addEventListener("click", () => {
     document.getElementById("printModal")?.classList.add("hidden");
   });
 
-  // تغيير قيم حاسبة الطباعة
-  ["calcPagesCount", "calcCopiesCount", "calcColorType", "calcBindingType"].forEach(id => {
+  ["calcPagesCount", "calcCopiesCount", "calcColorType", "calcBindingType"].forEach((id) => {
     document.getElementById(id)?.addEventListener("input", updatePrintCalculator);
     document.getElementById(id)?.addEventListener("change", updatePrintCalculator);
   });
 
-  // اختيار الملف
   document.getElementById("printDocInput")?.addEventListener("change", (e) => {
-    const file = e.target.files[0];
-    const display = document.getElementById("selectedFileNameDisplay");
-    if (file && display) {
-      display.textContent = `تم اختيار: ${file.name} (${(file.size / 1024).toFixed(1)} كيلوبايت)`;
-    }
+    const file = e.target.files?.[0];
+    if (file) handlePrintFileSelection(file);
   });
-
   document.getElementById("sendPrintOrderWhatsAppBtn")?.addEventListener("click", sendPrintOrderWhatsApp);
 
-  // 6. أحداث نافذة تسجيل الدخول الإداري
-  document.getElementById("adminLoginForm")?.addEventListener("submit", handleAdminLogin);
-  document.getElementById("closeAdminModalBtn")?.addEventListener("click", closeAdminModal);
+  // أزرار المشاركة السريعة
+  document.getElementById("headerShareBtn")?.addEventListener("click", shareLibraryLink);
+  document.getElementById("heroShareBtn")?.addEventListener("click", shareLibraryLink);
+  document.getElementById("footerShareBtn")?.addEventListener("click", shareLibraryLink);
 
-  document.getElementById("togglePasswordVisibilityBtn")?.addEventListener("click", () => {
-    const input = document.getElementById("adminPasswordInput");
-    if (!input) return;
-    if (input.type === "password") {
-      input.type = "text";
-    } else {
-      input.type = "password";
-    }
-  });
-
-  // 7. أحداث شاشة لوحة الإدارة
-  document.getElementById("adminLogoutBtn")?.addEventListener("click", handleAdminLogout);
-  document.getElementById("adminBackToStoreBtn")?.addEventListener("click", hideAdminPanel);
-  document.getElementById("adminGeneratePdfBtn")?.addEventListener("click", generatePrintablePriceReport);
-  document.getElementById("adminSaveAllPricesBtn")?.addEventListener("click", saveAllPricesFromTable);
-  document.getElementById("adminTableSearch")?.addEventListener("input", renderAdminPricesTable);
-
-  document.getElementById("adminAddNewBookBtn")?.addEventListener("click", () => {
-    document.getElementById("addNewBookModal")?.classList.remove("hidden");
-  });
-
-  document.getElementById("closeNewBookModalBtn")?.addEventListener("click", () => {
-    document.getElementById("addNewBookModal")?.classList.add("hidden");
-  });
-
-  document.getElementById("addNewBookForm")?.addEventListener("submit", handleAddNewBook);
-  document.getElementById("printingRatesForm")?.addEventListener("submit", handleSavePrintingRates);
-  document.getElementById("announcementForm")?.addEventListener("submit", handleSaveAnnouncement);
-
-  // تبديل تبويبات لوحة الإدارة
-  document.querySelectorAll(".admin-tab-btn").forEach(btn => {
-    btn.addEventListener("click", () => {
-      document.querySelectorAll(".admin-tab-btn").forEach(b => {
-        b.classList.remove("active", "bg-emerald-600", "text-white");
-        b.classList.add("bg-slate-800", "text-slate-300");
-      });
-      btn.classList.add("active", "bg-emerald-600", "text-white");
-      btn.classList.remove("bg-slate-800", "text-slate-300");
-
-      const tab = btn.dataset.adminTab;
-      document.getElementById("adminTabPrices")?.classList.toggle("hidden", tab !== "prices");
-      document.getElementById("adminTabPrintingRates")?.classList.toggle("hidden", tab !== "printingRates");
-      document.getElementById("adminTabAnnouncement")?.classList.toggle("hidden", tab !== "announcement");
-    });
-  });
-
-  // 8. الشريط السفلي والشريط العلوي
+  // أزرار الشريط السفلي والتحديث
   document.getElementById("navBottomBooks")?.addEventListener("click", () => {
+    selectMainCategory("all");
     window.scrollTo({ top: 0, behavior: "smooth" });
   });
-
-  document.getElementById("navBottomCart")?.addEventListener("click", () => {
-    document.getElementById("cartDrawer")?.classList.remove("hidden");
-    renderCartDrawer();
+  document.getElementById("navBottomSupplies")?.addEventListener("click", () => {
+    selectMainCategory("supplies");
+    document.getElementById("mainCategoryTabs")?.scrollIntoView({ behavior: "smooth" });
   });
-
   document.getElementById("navRefreshBtn")?.addEventListener("click", () => {
     const icon = document.getElementById("refreshIcon");
     if (icon) icon.classList.add("fa-spin");
     setTimeout(() => {
       if (icon) icon.classList.remove("fa-spin");
       loadInitialState();
-      renderCatalogGrid();
-      showToastNotification("تم تحديث أسعار الكتب والمحتوى بنجاح!");
-    }, 600);
+      refreshStorefrontViews();
+      showToastNotification("تم تحديث قائمة الأسعار والمنتجات بنجاح!");
+    }, 550);
   });
 
   document.getElementById("dismissBannerBtn")?.addEventListener("click", () => {
