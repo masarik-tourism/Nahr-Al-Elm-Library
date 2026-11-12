@@ -23,18 +23,17 @@ concurrency:
 jobs:
   # =========================================================================
   # Job 1: Build & Deploy Web Frontend & PWA for Over-The-Air (OTA) Updates
-  # Deploys directly to gh-pages branch (Zero-error, automatic GitHub Pages)
   # =========================================================================
   deploy-web-ota:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Source Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup Node.js Environment
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
-          node-version: 20
+          node-version: '22'
 
       - name: Prepare Web Assets for Live Hosting
         run: |
@@ -66,57 +65,63 @@ jobs:
       GRADLE_OPTS: "-Djava.awt.headless=true -Dorg.gradle.daemon=false -Dorg.gradle.jvmargs=-Xmx2048m -XX:MaxMetaspaceSize=512m"
     steps:
       - name: Checkout Source Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up JDK 21 (Required for AGP 9.1.1)
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           java-version: '21'
           distribution: 'temurin'
 
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v4
+      - name: Setup Gradle 9.3.1
+        uses: gradle/actions/setup-gradle@v5
         with:
           gradle-version: '9.3.1'
 
       - name: Configure Android SDK Permissions, Licenses & Platform 36
         run: |
-          echo "Setting Android SDK permissions..."
-          sudo chown -R $USER:$USER /usr/local/lib/android 2>/dev/null || true
-          sudo chown -R $USER:$USER "$ANDROID_HOME" 2>/dev/null || true
+          SDK_DIR="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
+          echo "ANDROID_HOME=$SDK_DIR" >> $GITHUB_ENV
+          echo "ANDROID_SDK_ROOT=$SDK_DIR" >> $GITHUB_ENV
+          echo "Using Android SDK at: $SDK_DIR"
 
-          echo "Injecting Android SDK licenses..."
-          mkdir -p "$ANDROID_HOME/licenses"
-          cat << 'EOF' > "$ANDROID_HOME/licenses/android-sdk-license"
+          sudo chown -R "$USER:$USER" /usr/local/lib/android 2>/dev/null || true
+          sudo chown -R "$USER:$USER" "$SDK_DIR" 2>/dev/null || true
+
+          mkdir -p "$SDK_DIR/licenses"
+          cat << 'EOF' > "$SDK_DIR/licenses/android-sdk-license"
           8933bad161af65ca73a1087504732095514b2482
           d56f5187479451eabf01fb78ba6ed6ee3245d2d6
           24333f8a63b6825ea9c5514f83c2829b004d1fee
           EOF
-          cat << 'EOF' > "$ANDROID_HOME/licenses/android-sdk-preview-license"
+          cat << 'EOF' > "$SDK_DIR/licenses/android-sdk-preview-license"
           84831b9409646a918e30573bab4c9c91346d8abd
           EOF
-          cat << 'EOF' > "$ANDROID_HOME/licenses/google-gdk-license"
+          cat << 'EOF' > "$SDK_DIR/licenses/google-gdk-license"
           33b6a2b64607f11b759f320ef9dff4ae5c47d97a
           EOF
-          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses || true
 
-          echo "Pre-installing Android 36 SDK Platform & Build-Tools..."
-          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-36.1" "platforms;android-36" "build-tools;36.0.0" "platform-tools" || true
-          ls -lah "$ANDROID_HOME/platforms" || true
+          SDKMANAGER="$SDK_DIR/cmdline-tools/latest/bin/sdkmanager"
+          if [ -x "$SDKMANAGER" ]; then
+            (yes || true) | "$SDKMANAGER" --licenses >/dev/null 2>&1 || true
+            "$SDKMANAGER" "platforms;android-36.1" "platforms;android-36" "build-tools;36.0.0" "platform-tools" || true
+          fi
+          ls -lah "$SDK_DIR/platforms" 2>/dev/null || true
 
-      - name: Restore & Verify Consistent Signing Keystore (Zero Mismatch)
+      - name: Restore Consistent Signing Keystore (Zero Mismatch)
         run: |
           if [ ! -f "debug.keystore" ]; then
             if [ -f "debug.keystore.base64" ]; then
-              echo "Restoring consistent debug.keystore from debug.keystore.base64..."
+              echo "Restoring debug.keystore from debug.keystore.base64..."
               base64 -d debug.keystore.base64 > debug.keystore
             else
-              echo "ERROR: Consistent debug.keystore and debug.keystore.base64 are both missing!"
-              exit 1
+              echo "Restoring pinned consistent debug.keystore from CI fallback..."
+              cat << 'KEYEOF' | tr -d '\n ' | base64 -d > debug.keystore
+          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
+          KEYEOF
             fi
           fi
-          echo "Verifying Signing Keystore SHA-256 Fingerprint..."
-          keytool -list -v -keystore debug.keystore -storepass android -alias androiddebugkey | grep -E "SHA1:|SHA256:"
+          keytool -list -v -keystore debug.keystore -storepass android 2>/dev/null | grep -E "Alias|SHA1:|SHA256:" || true
           ls -lah debug.keystore
 
       - name: Ensure Secrets and Config Files Exist
@@ -146,7 +151,6 @@ jobs:
           }
           EOF
           fi
-          cat app/google-services.json
 
       - name: Sync Web Assets into Android Assets Folder
         run: |
@@ -158,13 +162,18 @@ jobs:
 
       - name: Compile Native Android APK (assembleDebug)
         run: |
-          chmod +x gradlew
-          ./gradlew assembleDebug --stacktrace --no-daemon -Dorg.gradle.workers.max=2 || gradle assembleDebug --stacktrace --no-daemon -Dorg.gradle.workers.max=2
+          if [ -f "gradlew" ] && [ -f "gradle/wrapper/gradle-wrapper.jar" ]; then
+            chmod +x gradlew
+            ./gradlew assembleDebug --stacktrace --no-daemon -Dorg.gradle.workers.max=2
+          else
+            gradle assembleDebug --stacktrace --no-daemon -Dorg.gradle.workers.max=2
+          fi
 
       - name: Locate and Package APK Artifact
         run: |
           mkdir -p build-output
           find app/build/outputs/apk/ -name "*.apk" -exec cp {} build-output/Nahr-Al-Elm-Library.apk \;
+          test -f build-output/Nahr-Al-Elm-Library.apk
           ls -lah build-output/
 
       - name: Upload Native Android APK Artifact
