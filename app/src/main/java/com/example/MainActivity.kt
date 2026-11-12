@@ -4,6 +4,8 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.net.Uri
 import android.os.Bundle
 import android.view.ViewGroup
@@ -12,6 +14,7 @@ import android.webkit.ValueCallback
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
+import android.webkit.WebResourceResponse
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
@@ -45,6 +48,9 @@ import androidx.compose.ui.viewinterop.AndroidView
 import com.example.ui.theme.BrandNavy
 import com.example.ui.theme.MyApplicationTheme
 
+private const val LIVE_OTA_URL = "https://masarik-tourism.github.io/Nahr-Al-Elm-Library/"
+private const val LOCAL_FALLBACK_URL = "file:///android_asset/index.html"
+
 class MainActivity : ComponentActivity() {
 
   override fun onCreate(savedInstanceState: Bundle?) {
@@ -68,8 +74,8 @@ class MainActivity : ComponentActivity() {
 
 /**
  * Native Android APK Shell Wrapper for Nahr Al-Elm Library (مكتبة نهر العلم).
- * Embeds the PWA/Web interface, supports native file choosing for PDF page counting,
- * provides native share sheet integration, and intercepts WhatsApp/Tel deep links.
+ * Loads the live GitHub Pages OTA endpoint when online for instant updates without reinstalling,
+ * and seamlessly falls back to bundled offline assets when disconnected.
  */
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
@@ -104,6 +110,7 @@ fun NativeWebShellScreen(modifier: Modifier = Modifier) {
   ) {
     AndroidView(
       factory = { ctx ->
+        val online = isNetworkAvailable(ctx)
         WebView(ctx).apply {
           layoutParams = ViewGroup.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT,
@@ -113,19 +120,23 @@ fun NativeWebShellScreen(modifier: Modifier = Modifier) {
           settings.apply {
             javaScriptEnabled = true
             domStorageEnabled = true
-            databaseEnabled = true
             allowFileAccess = true
             allowContentAccess = true
             useWideViewPort = true
             loadWithOverviewMode = true
-            cacheMode = WebSettings.LOAD_DEFAULT
+            // Always fetch fresh OTA HTML/JS when online; allow cache when offline
+            cacheMode = if (online) WebSettings.LOAD_NO_CACHE else WebSettings.LOAD_CACHE_ELSE_NETWORK
             mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
             val defaultUa = userAgentString
             userAgentString = "$defaultUa NahrAlElmNativeApp/2.0 (Android Native APK Shell)"
           }
 
+          if (online) {
+            clearCache(false)
+          }
+
           // Inject JavaScript interface
-          addJavascriptInterface(AndroidNativeBridge(ctx), "AndroidApp")
+          addJavascriptInterface(AndroidNativeBridge(ctx, this), "AndroidApp")
 
           webChromeClient = object : WebChromeClient() {
             override fun onProgressChanged(view: WebView?, newProgress: Int) {
@@ -175,7 +186,16 @@ fun NativeWebShellScreen(modifier: Modifier = Modifier) {
               canGoBack = view?.canGoBack() == true
               isLoading = false
               view?.evaluateJavascript(
-                "window.isNativeApp = true;",
+                """
+                (function() {
+                  window.isNativeApp = true;
+                  var btn = document.getElementById('installBtnContainer');
+                  if (btn) { btn.classList.add('hidden'); }
+                  if (typeof handleInstallButtonVisibility === 'function') {
+                    handleInstallButtonVisibility();
+                  }
+                })();
+                """.trimIndent(),
                 null
               )
             }
@@ -201,13 +221,32 @@ fun NativeWebShellScreen(modifier: Modifier = Modifier) {
             ) {
               super.onReceivedError(view, request, error)
               if (request?.isForMainFrame == true && request.url.scheme != "file") {
-                view?.loadUrl("file:///android_asset/index.html")
+                view?.loadUrl(LOCAL_FALLBACK_URL)
+              }
+            }
+
+            override fun onReceivedHttpError(
+              view: WebView?,
+              request: WebResourceRequest?,
+              errorResponse: WebResourceResponse?
+            ) {
+              super.onReceivedHttpError(view, request, errorResponse)
+              if (request?.isForMainFrame == true && (errorResponse?.statusCode ?: 0) >= 400) {
+                view?.loadUrl(LOCAL_FALLBACK_URL)
               }
             }
           }
 
-          // Load local bundled asset for instant startup with offline & Firebase live sync
-          loadUrl("file:///android_asset/index.html")
+          // Load live OTA website with no-cache headers if connected; otherwise load offline bundled assets
+          if (online) {
+            val noCacheHeaders = mapOf(
+              "Cache-Control" to "no-cache, no-store, must-revalidate",
+              "Pragma" to "no-cache"
+            )
+            loadUrl(LIVE_OTA_URL, noCacheHeaders)
+          } else {
+            loadUrl(LOCAL_FALLBACK_URL)
+          }
           webViewInstance = this
         }
       },
@@ -233,11 +272,19 @@ fun NativeWebShellScreen(modifier: Modifier = Modifier) {
   }
 }
 
+private fun isNetworkAvailable(context: Context): Boolean {
+  val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager ?: return false
+  val network = cm.activeNetwork ?: return false
+  val capabilities = cm.getNetworkCapabilities(network) ?: return false
+  return capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+}
+
 /**
- * Handle custom URL schemes:
- * - WhatsApp deep links (wa.me, whatsapp://) -> Launches WhatsApp or falls back to browser
- * - Telephone calls (tel:) -> Launches Phone Dialer
- * - Email (mailto:) -> Launches Email App
+ * Handle custom URL schemes and external links:
+ * - WhatsApp deep links -> Launches WhatsApp
+ * - Telephone calls -> Launches Phone Dialer
+ * - GitHub Releases -> Opens external browser for APK download
+ * - Library OTA host & local assets -> Stay inside native WebView
  */
 private fun handleCustomUrlIntents(context: Context, url: String): Boolean {
   return try {
@@ -273,7 +320,17 @@ private fun handleCustomUrlIntents(context: Context, url: String): Boolean {
         true
       }
 
-      url.startsWith("file:///android_asset/") || url.startsWith("https://nahralelm-library.com") -> {
+      url.contains("github.com/masarik-tourism/Nahr-Al-Elm-Library/releases") -> {
+        val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse(url)).apply {
+          flags = Intent.FLAG_ACTIVITY_NEW_TASK
+        }
+        context.startActivity(browserIntent)
+        true
+      }
+
+      url.startsWith(LOCAL_FALLBACK_URL) ||
+        url.startsWith(LIVE_OTA_URL) ||
+        url.startsWith("https://nahralelm-library.com") -> {
         false
       }
 
@@ -292,13 +349,33 @@ private fun handleCustomUrlIntents(context: Context, url: String): Boolean {
 /**
  * JavaScript Bridge exposed to window.AndroidApp
  */
-class AndroidNativeBridge(private val context: Context) {
+class AndroidNativeBridge(
+  private val context: Context,
+  private val webView: WebView
+) {
 
   @JavascriptInterface
   fun isNativeApp(): Boolean = true
 
   @JavascriptInterface
   fun getAppVersion(): String = "2.0.0"
+
+  @JavascriptInterface
+  fun reloadLatestOta() {
+    webView.post {
+      if (isNetworkAvailable(context)) {
+        webView.clearCache(false)
+        webView.settings.cacheMode = WebSettings.LOAD_NO_CACHE
+        val noCacheHeaders = mapOf(
+          "Cache-Control" to "no-cache, no-store, must-revalidate",
+          "Pragma" to "no-cache"
+        )
+        webView.loadUrl(LIVE_OTA_URL, noCacheHeaders)
+      } else {
+        webView.loadUrl(LOCAL_FALLBACK_URL)
+      }
+    }
+  }
 
   @JavascriptInterface
   fun showToast(message: String) {

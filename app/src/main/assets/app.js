@@ -1468,9 +1468,35 @@ function handleInstallButtonVisibility() {
 
 function registerServiceWorkerSafely() {
   if ("serviceWorker" in navigator && (window.location.protocol === "https:" || window.location.hostname === "localhost")) {
-    navigator.serviceWorker.register("./sw.js").catch((err) => {
-      console.warn("SW registration notice:", err.message);
+    const hadController = Boolean(navigator.serviceWorker.controller);
+    let refreshing = false;
+
+    navigator.serviceWorker.addEventListener("controllerchange", () => {
+      if (!hadController || refreshing) return;
+      refreshing = true;
+      window.location.reload();
     });
+
+    navigator.serviceWorker.addEventListener("message", (event) => {
+      if (event.data?.type === "OTA_UPDATE_ACTIVATED") {
+        showToastNotification("تم تحديث التطبيق تلقائياً بأحدث المزايا والأسعار!");
+      }
+    });
+
+    navigator.serviceWorker
+      .register("./sw.js", { updateViaCache: "none" })
+      .then((reg) => {
+        // فحص التحديثات فور الفتح وعند عودة التطبيق للواجهة
+        reg.update().catch(() => {});
+        document.addEventListener("visibilitychange", () => {
+          if (document.visibilityState === "visible") {
+            reg.update().catch(() => {});
+          }
+        });
+      })
+      .catch((err) => {
+        console.warn("SW registration notice:", err.message);
+      });
   }
 }
 
@@ -2403,9 +2429,27 @@ document.addEventListener("DOMContentLoaded", () => {
     selectMainCategory("supplies");
     document.getElementById("mainCategoryTabs")?.scrollIntoView({ behavior: "smooth" });
   });
-  document.getElementById("navRefreshBtn")?.addEventListener("click", () => {
+  document.getElementById("navRefreshBtn")?.addEventListener("click", async () => {
     const icon = document.getElementById("refreshIcon");
     if (icon) icon.classList.add("fa-spin");
+
+    if (navigator.onLine) {
+      if ("serviceWorker" in navigator) {
+        try {
+          const reg = await navigator.serviceWorker.getRegistration();
+          if (reg) await reg.update();
+        } catch (_) {}
+      }
+      if (window.AndroidApp && typeof window.AndroidApp.reloadLatestOta === "function") {
+        window.AndroidApp.reloadLatestOta();
+        return;
+      }
+      if (window.location.protocol.startsWith("http")) {
+        window.location.reload();
+        return;
+      }
+    }
+
     setTimeout(() => {
       if (icon) icon.classList.remove("fa-spin");
       loadInitialState();

@@ -1,13 +1,14 @@
 /*
  * Nahr Al-Elm Library (مكتبة نهر العلم - إدارة أ/ إيهاب)
- * High-Reliability Progressive Web App Service Worker with OTA Update Engine
- * Network-First Strategy for Instant Over-The-Air Caching and Resilient Offline Support
+ * High-Reliability Progressive Web App Service Worker with Real-Time OTA Update Engine
+ * Forces HTTP revalidation (cache: 'no-cache') on Network-First fetches so any update
+ * pushed to GitHub Pages is pulled immediately by both mobile browsers and the Android APK.
  */
 
-const CACHE_VERSION = 'nahralelm-ota-v2.0.0';
+const CACHE_VERSION = 'nahralelm-ota-v2.0.1';
 const CACHE_NAME = `nahr-alelm-cache-${CACHE_VERSION}`;
 
-// Core assets required for initial offline bootstrap
+// الملفات الأساسية المطلوبة للتشغيل بدون إنترنت
 const PRECACHE_ASSETS = [
   './',
   './index.html',
@@ -19,75 +20,65 @@ const PRECACHE_ASSETS = [
   './icon-512.png'
 ];
 
-// Install event: Pre-cache core shell assets and activate immediately
+// تثبيت Service Worker وتخزين النسخة الاحتياطية وتفعيلها فوراً
 self.addEventListener('install', (event) => {
-  console.log('[SW] Service Worker installing version:', CACHE_VERSION);
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      console.log('[SW] Pre-caching core application shell assets');
-      return cache.addAll(PRECACHE_ASSETS).catch((err) => {
-        console.warn('[SW] Pre-cache non-fatal warning:', err);
-      });
-    }).then(() => {
-      // Force the waiting service worker to become the active service worker
-      return self.skipWaiting();
-    })
+      return cache.addAll(PRECACHE_ASSETS).catch(() => {});
+    }).then(() => self.skipWaiting())
   );
 });
 
-// Activate event: Clean up old legacy caches and claim active clients immediately
+// تفعيل التحديث الجديد فوراً ومسح أي كاش قديم
 self.addEventListener('activate', (event) => {
-  console.log('[SW] Service Worker activated. Claiming clients for version:', CACHE_VERSION);
   event.waitUntil(
     caches.keys().then((cacheNames) => {
       return Promise.all(
         cacheNames.map((name) => {
           if (name !== CACHE_NAME && name.startsWith('nahr-alelm-')) {
-            console.log('[SW] Deleting obsolete cache:', name);
             return caches.delete(name);
           }
         })
       );
-    }).then(() => {
-      // Take control of all pages within scope immediately
-      return self.clients.claim();
-    }).then(() => {
-      // Broadcast activation and version to all open clients
-      return self.clients.matchAll({ type: 'window' }).then((clients) => {
-        clients.forEach((client) => {
-          client.postMessage({
-            type: 'OTA_UPDATE_ACTIVATED',
-            version: CACHE_VERSION,
-            timestamp: Date.now()
+    }).then(() => self.clients.claim())
+      .then(() => {
+        return self.clients.matchAll({ type: 'window' }).then((clients) => {
+          clients.forEach((client) => {
+            client.postMessage({
+              type: 'OTA_UPDATE_ACTIVATED',
+              version: CACHE_VERSION,
+              timestamp: Date.now()
+            });
           });
         });
-      });
-    })
+      })
   );
 });
 
-// Fetch event: Network-First Strategy with Cache Fallback for dynamic OTA updates
+// استراتيجية Network-First مع إعادة التحقق الإجباري من السيرفر (no-cache)
 self.addEventListener('fetch', (event) => {
   const request = event.request;
+  if (request.method !== 'GET') return;
 
-  // Handle only GET requests
-  if (request.method !== 'GET') {
-    return;
-  }
-
-  // Handle HTTP/HTTPS requests
   const url = new URL(request.url);
+  const isCoreShellAsset =
+    request.mode === 'navigate' ||
+    url.pathname.endsWith('.html') ||
+    url.pathname.endsWith('.js') ||
+    url.pathname.endsWith('manifest.json') ||
+    url.pathname.endsWith('/');
 
-  // Network-First strategy
+  // إجبار الشبكة على فحص التحديثات الجديدة من GitHub Pages عند كل فتح للتطبيق
+  const fetchPromise = isCoreShellAsset
+    ? fetch(new Request(request, { cache: 'no-cache' }))
+    : fetch(request);
+
   event.respondWith(
-    fetch(request)
+    fetchPromise
       .then((networkResponse) => {
-        // Validate network response
         if (networkResponse && networkResponse.status === 200) {
-          // Clone and update runtime cache in background
           const responseToCache = networkResponse.clone();
           caches.open(CACHE_NAME).then((cache) => {
-            // Only cache same-origin or trusted assets
             if (url.origin === self.location.origin || url.protocol.startsWith('http')) {
               cache.put(request, responseToCache).catch(() => {});
             }
@@ -95,14 +86,10 @@ self.addEventListener('fetch', (event) => {
         }
         return networkResponse;
       })
-      .catch((error) => {
-        console.warn('[SW] Network request failed. Falling back to local offline cache for:', request.url);
-        // Fallback to cache if network is unavailable
+      .catch(() => {
+        // العودة للنسخة المخزنة محلياً عند انقطاع الإنترنت فقط
         return caches.match(request).then((cachedResponse) => {
-          if (cachedResponse) {
-            return cachedResponse;
-          }
-          // If navigation request (HTML), fallback to root index.html
+          if (cachedResponse) return cachedResponse;
           if (request.mode === 'navigate') {
             return caches.match('./index.html') || caches.match('./');
           }
@@ -116,15 +103,11 @@ self.addEventListener('fetch', (event) => {
   );
 });
 
-// Listen for messages from frontend clients (e.g., skipWaiting or version checks)
 self.addEventListener('message', (event) => {
   if (!event.data) return;
-
   if (event.data.type === 'SKIP_WAITING') {
-    console.log('[SW] SKIP_WAITING received. Activating new worker...');
     self.skipWaiting();
   }
-
   if (event.data.type === 'CHECK_VERSION') {
     event.source?.postMessage({
       type: 'VERSION_INFO',
