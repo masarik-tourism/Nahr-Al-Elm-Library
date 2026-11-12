@@ -195,11 +195,31 @@ jobs:
           retention-days: 30
           if-no-files-found: error
 
+      # Attach the compiled APK directly into GitHub Release (v2.2.0) first so latest download always resolves
+      - name: Publish APK Asset to GitHub Release
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'release' || github.ref == 'refs/heads/main'
+        with:
+          files: build-output/Nahr-Al-Elm-Library.apk
+          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'v2.2.0' }}
+          name: "إصدار مكتبة نهر العلم - تطبيق الأندرويد ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'v2.2.0' }}"
+          body: |
+            ### 📱 تطبيق مكتبة نهر العلم - إدارة أ/ إيهاب (الإصدار 2.2.0)
+            - تقليص حجم ملف التطبيق (APK) بأكثر من 56% (~10.1 ميجابايت) لتنزيل وتثبيت فائق السرعة.
+            - استضافة رابط التحميل المباشر مع بديل تلقائي لضمان عدم إخفاق التنزيل.
+            - محرك التحديث التلقائي المباشر (Auto-OTA) لسحب أي تحديثات جديدة من الموقع تلقائياً عند الفتح دون إعادة تثبيت.
+          draft: false
+          prerelease: false
+          make_latest: true
+          token: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true
+
       - name: Host Direct APK on GitHub Pages Fastly CDN
         if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
         run: |
           mkdir -p pages-apk
           cp -f build-output/Nahr-Al-Elm-Library.apk pages-apk/Nahr-Al-Elm-Library.apk
+          touch pages-apk/.nojekyll
           ls -lh pages-apk/
 
       - name: Publish APK to GitHub Pages CDN
@@ -210,23 +230,4 @@ jobs:
           publish_dir: ./pages-apk
           publish_branch: gh-pages
           keep_files: true
-        continue-on-error: true
-
-      # Attach the compiled APK directly into GitHub Release (v2.2.0)
-      - name: Publish APK Asset to GitHub Release
-        uses: softprops/action-gh-release@v2
-        if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'release' || github.ref == 'refs/heads/main'
-        with:
-          files: build-output/Nahr-Al-Elm-Library.apk
-          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'v2.2.0' }}
-          name: "إصدار مكتبة نهر العلم - تطبيق الأندرويد ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'v2.2.0' }}"
-          body: |
-            ### 📱 تطبيق مكتبة نهر العلم - إدارة أ/ إيهاب (الإصدار 2.2.0)
-            - تقليص حجم ملف التطبيق (APK) بأكثر من 75% لتنزيل وتثبيت فائق السرعة.
-            - استضافة رابط التحميل المباشر على شبكة CDN السريعة وتسريع فتح الموقع والتطبيق أضعافاً.
-            - محرك التحديث التلقائي المباشر (Auto-OTA) لسحب أي تحديثات جديدة من الموقع تلقائياً عند الفتح دون إعادة تثبيت.
-          draft: false
-          prerelease: false
-          make_latest: true
-          token: ${{ secrets.GITHUB_TOKEN }}
         continue-on-error: true

@@ -30,8 +30,13 @@ const firebaseConfig = {
 // رقم الواتساب المعتمد للمكتبة ومفاتيح التخزين المحلي ورابط التحميل المباشر للتطبيق
 const STORE_WHATSAPP_NUMBER = "201002968331";
 const STORE_PUBLIC_URL = "https://masarik-tourism.github.io/Nahr-Al-Elm-Library/";
-const DIRECT_APK_DOWNLOAD_URL =
+const CDN_APK_DOWNLOAD_URL =
   "https://masarik-tourism.github.io/Nahr-Al-Elm-Library/Nahr-Al-Elm-Library.apk";
+const RELEASE_APK_DOWNLOAD_URL =
+  "https://github.com/masarik-tourism/Nahr-Al-Elm-Library/releases/latest/download/Nahr-Al-Elm-Library.apk";
+const DIRECT_APK_DOWNLOAD_URL = RELEASE_APK_DOWNLOAD_URL;
+let activeApkDownloadUrl = RELEASE_APK_DOWNLOAD_URL;
+let activeApkIsSameOriginCdn = false;
 const STORAGE_KEYS = {
   BOOKS: "nahralelm_books_v2",
   RATES: "nahralelm_print_rates_v2",
@@ -1571,6 +1576,51 @@ async function shareLibraryLink() {
   }
 }
 
+function applyApkAnchorState(anchorEl) {
+  if (!anchorEl) return;
+  anchorEl.setAttribute("href", activeApkDownloadUrl);
+  if (activeApkIsSameOriginCdn) {
+    anchorEl.setAttribute("download", "Nahr-Al-Elm-Library.apk");
+  } else {
+    anchorEl.removeAttribute("download");
+  }
+}
+
+async function resolveBestApkDownloadUrl() {
+  if (!window.location.protocol.startsWith("http") || window.location.hostname === "localhost") {
+    return;
+  }
+  const installAppBtn = document.getElementById("installAppBtn");
+  const footerApkBtn = document.getElementById("footerApkDownloadBtn");
+
+  try {
+    const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
+    const timer = controller ? setTimeout(() => controller.abort(), 2500) : null;
+    const res = await fetch(`./Nahr-Al-Elm-Library.apk?probe=${Date.now()}`, {
+      method: "HEAD",
+      cache: "no-store",
+      signal: controller ? controller.signal : undefined
+    });
+    if (timer) clearTimeout(timer);
+
+    const contentType = (res.headers.get("content-type") || "").toLowerCase();
+    const contentLength = Number(res.headers.get("content-length") || 0);
+    if (res.ok && !contentType.includes("text/html") && contentLength > 1000000) {
+      activeApkDownloadUrl = CDN_APK_DOWNLOAD_URL;
+      activeApkIsSameOriginCdn = true;
+    } else {
+      activeApkDownloadUrl = RELEASE_APK_DOWNLOAD_URL;
+      activeApkIsSameOriginCdn = false;
+    }
+  } catch (_) {
+    activeApkDownloadUrl = RELEASE_APK_DOWNLOAD_URL;
+    activeApkIsSameOriginCdn = false;
+  }
+
+  applyApkAnchorState(installAppBtn);
+  applyApkAnchorState(footerApkBtn);
+}
+
 function handleInstallButtonVisibility() {
   const container = document.getElementById("installBtnContainer");
   const footerApkBtn = document.getElementById("footerApkDownloadBtn");
@@ -3010,6 +3060,7 @@ document.addEventListener("DOMContentLoaded", () => {
   updatePrintCalculator();
   setupHiddenAdminTrigger();
   handleInstallButtonVisibility();
+  resolveBestApkDownloadUrl();
 
   // الاحتفاظ بحدث PWA اختيارياً مع إبقاء زر التثبيت مخصصاً للتحميل المباشر لملف APK
   window.addEventListener("beforeinstallprompt", (e) => {
@@ -3019,9 +3070,7 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   const handleDirectApkDownloadFeedback = (anchorEl) => {
-    if (anchorEl && anchorEl.getAttribute("href") !== DIRECT_APK_DOWNLOAD_URL) {
-      anchorEl.setAttribute("href", DIRECT_APK_DOWNLOAD_URL);
-    }
+    applyApkAnchorState(anchorEl);
     showToastNotification("بدأ التحميل المباشر للتطبيق (APK)... افتحه للتثبيت (ولو وجدت نسخة قديمة جداً احذفها أولاً).");
   };
 
