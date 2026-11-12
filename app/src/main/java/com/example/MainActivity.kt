@@ -30,7 +30,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
@@ -59,12 +59,13 @@ class MainActivity : ComponentActivity() {
     setContent {
       MyApplicationTheme {
         Scaffold(
-          modifier = Modifier
-            .fillMaxSize()
-            .statusBarsPadding()
-        ) { _ ->
+          modifier = Modifier.fillMaxSize(),
+          containerColor = BrandNavy
+        ) { innerPadding ->
           NativeWebShellScreen(
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier
+              .fillMaxSize()
+              .padding(innerPadding)
           )
         }
       }
