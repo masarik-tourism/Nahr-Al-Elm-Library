@@ -166,12 +166,18 @@
           <span id="syncStatusText">أسعار محدثة</span>
         </span>
 
-        <!-- زر تثبيت التطبيق للمتصفح فقط -->
-        <div id="installBtnContainer" class="hidden">
-          <button id="installAppBtn" title="تثبيت التطبيق" class="flex items-center gap-1 bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs py-1.5 px-2.5 rounded-xl shadow transition-all">
+        <!-- زر التثبيت والتحميل المباشر لتطبيق الأندرويد (يظهر في المتصفح فقط) -->
+        <div id="installBtnContainer">
+          <a
+            id="installAppBtn"
+            href="https://github.com/masarik-tourism/Nahr-Al-Elm-Library/releases/latest/download/Nahr-Al-Elm-Library.apk"
+            download="Nahr-Al-Elm-Library.apk"
+            title="تحميل وتثبيت تطبيق الأندرويد مباشرة"
+            class="flex items-center gap-1 bg-amber-500 hover:bg-amber-600 active:scale-95 text-slate-950 font-black text-[11px] sm:text-xs py-1.5 px-2 sm:px-3 rounded-xl shadow transition-all whitespace-nowrap"
+          >
             <i class="fa-solid fa-download text-xs"></i>
-            <span class="hidden md:inline">تثبيت</span>
-          </button>
+            <span>تثبيت</span>
+          </a>
         </div>
 
         <!-- زر مشاركة رابط المكتبة -->
@@ -472,9 +478,14 @@
               <i class="fa-solid fa-mobile-screen"></i>
               <span dir="ltr">01157706887</span>
             </a>
-            <a href="https://github.com/masarik-tourism/Nahr-Al-Elm-Library/releases" target="_blank" rel="noopener" class="flex items-center gap-1.5 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-xl border border-slate-200 transition-all">
+            <a
+              id="footerApkDownloadBtn"
+              href="https://github.com/masarik-tourism/Nahr-Al-Elm-Library/releases/latest/download/Nahr-Al-Elm-Library.apk"
+              download="Nahr-Al-Elm-Library.apk"
+              class="flex items-center gap-1.5 text-xs font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 px-3 py-1.5 rounded-xl border border-emerald-200 transition-all"
+            >
               <i class="fa-brands fa-android text-emerald-600"></i>
-              <span>تطبيق الأندرويد</span>
+              <span>تحميل تطبيق الأندرويد مباشرة</span>
             </a>
           </div>
         </div>

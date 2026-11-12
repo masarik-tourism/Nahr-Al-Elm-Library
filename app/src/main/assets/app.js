@@ -27,9 +27,11 @@ const firebaseConfig = {
   appId: "1:1234567890:web:abcdef"
 };
 
-// رقم الواتساب المعتمد للمكتبة ومفاتيح التخزين المحلي
+// رقم الواتساب المعتمد للمكتبة ومفاتيح التخزين المحلي ورابط التحميل المباشر للتطبيق
 const STORE_WHATSAPP_NUMBER = "201002968331";
 const STORE_PUBLIC_URL = "https://masarik-tourism.github.io/Nahr-Al-Elm-Library/";
+const DIRECT_APK_DOWNLOAD_URL =
+  "https://github.com/masarik-tourism/Nahr-Al-Elm-Library/releases/latest/download/Nahr-Al-Elm-Library.apk";
 const STORAGE_KEYS = {
   BOOKS: "nahralelm_books_v2",
   RATES: "nahralelm_print_rates_v2",
@@ -1447,7 +1449,7 @@ async function shareLibraryLink() {
 
 function handleInstallButtonVisibility() {
   const container = document.getElementById("installBtnContainer");
-  if (!container) return;
+  const footerApkBtn = document.getElementById("footerApkDownloadBtn");
 
   const isRunningNative =
     window.isNativeApp === true ||
@@ -1455,14 +1457,20 @@ function handleInstallButtonVisibility() {
     navigator.userAgent.includes("NahrAlElmNativeApp") ||
     window.location.protocol === "file:";
 
-  const isStandalone =
-    window.matchMedia("(display-mode: standalone)").matches ||
-    window.navigator.standalone === true;
+  if (container) {
+    if (isRunningNative) {
+      container.classList.add("hidden");
+    } else {
+      container.classList.remove("hidden");
+    }
+  }
 
-  if (isRunningNative || isStandalone || !deferredInstallPrompt) {
-    container.classList.add("hidden");
-  } else {
-    container.classList.remove("hidden");
+  if (footerApkBtn) {
+    if (isRunningNative) {
+      footerApkBtn.classList.add("hidden");
+    } else {
+      footerApkBtn.classList.remove("hidden");
+    }
   }
 }
 
@@ -2283,19 +2291,28 @@ document.addEventListener("DOMContentLoaded", () => {
   setupHiddenAdminTrigger();
   handleInstallButtonVisibility();
 
-  // التقاط حدث تثبيت PWA للمتصفح
+  // الاحتفاظ بحدث PWA اختيارياً مع إبقاء زر التثبيت مخصصاً للتحميل المباشر لملف APK
   window.addEventListener("beforeinstallprompt", (e) => {
     e.preventDefault();
     deferredInstallPrompt = e;
     handleInstallButtonVisibility();
   });
 
-  document.getElementById("installAppBtn")?.addEventListener("click", async () => {
-    if (!deferredInstallPrompt) return;
-    deferredInstallPrompt.prompt();
-    await deferredInstallPrompt.userChoice;
-    deferredInstallPrompt = null;
-    handleInstallButtonVisibility();
+  const handleDirectApkDownloadFeedback = (anchorEl) => {
+    if (anchorEl && anchorEl.getAttribute("href") !== DIRECT_APK_DOWNLOAD_URL) {
+      anchorEl.setAttribute("href", DIRECT_APK_DOWNLOAD_URL);
+    }
+    showToastNotification("بدأ التحميل المباشر لتطبيق مكتبة نهر العلم (APK)... افتح الملف بعد اكتمال التنزيل للتثبيت فوراً.");
+  };
+
+  const installAppBtn = document.getElementById("installAppBtn");
+  installAppBtn?.addEventListener("click", () => {
+    handleDirectApkDownloadFeedback(installAppBtn);
+  });
+
+  const footerApkBtn = document.getElementById("footerApkDownloadBtn");
+  footerApkBtn?.addEventListener("click", () => {
+    handleDirectApkDownloadFeedback(footerApkBtn);
   });
 
   // أحداث التبويب الرئيسي

@@ -199,5 +199,6 @@ jobs:
             - شريط بحث فوري + فلاتر ذكية + عروض السبلايز + حساب صفحات PDF تلقائياً بـ PDF.js.
           draft: false
           prerelease: false
+          make_latest: true
           token: ${{ secrets.GITHUB_TOKEN }}
         continue-on-error: true
