@@ -121,6 +121,19 @@
     .hidden {
       display: none !important;
     }
+    #printModal,
+    #cartDrawer {
+      position: fixed;
+      inset: 0;
+      z-index: 60;
+    }
+    #printModal.hidden,
+    #cartDrawer.hidden,
+    #noResultsNotice.hidden,
+    #cartEmptyNotice.hidden,
+    #printableReportArea.hidden {
+      display: none !important;
+    }
     body {
       padding-bottom: 150px;
     }
@@ -446,7 +459,7 @@
         </h3>
         <span class="text-xs font-bold text-slate-500 bg-white px-2.5 py-1 rounded-lg border border-slate-200">
           <span id="filteredItemsLoadingLabel">جاري تحميل منتجات المكتبة...</span>
-          <span id="filteredItemsReadyLabel" class="hidden">المنتجات المعروضة: <span id="filteredItemsCount" class="text-emerald-700 font-black"></span></span>
+          <span id="filteredItemsReadyLabel" style="display: none;" class="hidden">المنتجات المعروضة: <span id="filteredItemsCount" class="text-emerald-700 font-black"></span></span>
         </span>
       </div>
 
