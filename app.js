@@ -487,6 +487,7 @@ const DEFAULT_PRINT_RATES = {
   colorPage: 2.50,
   bindingStaple: 3.00,
   bindingPlastic: 15.00,
+  bindingThermal: 20.00,
   bindingWire: 25.00,
   deliveryFee: 20.00
 };
@@ -656,6 +657,11 @@ function escapeHtml(str) {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;");
+}
+
+function formatEgp(val) {
+  const num = Math.round((Number(val) || 0) * 100) / 100;
+  return Number.isInteger(num) ? String(num) : num.toFixed(2);
 }
 
 const fallbackSvgCache = new Map();
@@ -1166,6 +1172,41 @@ function renderHotDeals() {
     .join("");
 }
 
+function buildCatalogLoadingCardHtml() {
+  return `
+    <div class="col-span-full bg-white rounded-2xl p-6 text-center border border-emerald-200/80 shadow-sm space-y-3">
+      <div class="w-12 h-12 mx-auto rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-xl">
+        <i class="fa-solid fa-spinner fa-spin"></i>
+      </div>
+      <div>
+        <p class="text-sm font-black text-slate-800">أهلاً بكم في مكتبة نهر العلم (إدارة أ/ إيهاب)</p>
+        <p class="text-xs font-semibold text-slate-500 mt-1">جاري تحميل منتجات المكتبة وتجهيز أحدث الأسعار...</p>
+      </div>
+      <button type="button" onclick="retryCatalogLoad()" class="inline-flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold py-2 px-4 rounded-xl shadow-sm transition-all">
+        <i class="fa-solid fa-rotate-right"></i>
+        <span>إعادة محاولة (Retry)</span>
+      </button>
+    </div>
+  `;
+}
+
+function retryCatalogLoad() {
+  isCloudSyncLoading = false;
+  loadInitialState();
+  if (!Array.isArray(currentBooks) || currentBooks.length === 0) {
+    currentBooks = DEFAULT_BOOKS.map((b) => ({ ...b }));
+    try {
+      localStorage.setItem(STORAGE_KEYS.BOOKS, JSON.stringify(currentBooks));
+    } catch (_) {}
+  }
+  try {
+    initializeFirebase();
+  } catch (_) {}
+  isCloudSyncLoading = false;
+  refreshStorefrontViews();
+  showToastNotification("تم تحديث وإظهار منتجات مكتبة نهر العلم بنجاح!");
+}
+
 function renderCatalogGrid() {
   const catalogGrid = document.getElementById("catalogGrid");
   const noResultsNotice = document.getElementById("noResultsNotice");
@@ -1197,7 +1238,7 @@ function renderCatalogGrid() {
     setLoadingLabels(true);
     setNoResultsVisible(false);
     if (missingBookCtaBox) missingBookCtaBox.classList.add("hidden");
-    catalogGrid.innerHTML = `<div class="col-span-full bg-white rounded-2xl p-6 text-center border border-slate-200 text-xs font-bold text-slate-500"><i class="fa-solid fa-spinner fa-spin text-emerald-600 ml-1"></i> جاري تحميل منتجات المكتبة...</div>`;
+    catalogGrid.innerHTML = buildCatalogLoadingCardHtml();
     return;
   }
 
@@ -1220,7 +1261,7 @@ function renderCatalogGrid() {
     } else {
       setNoResultsVisible(false);
       if (missingBookCtaBox) missingBookCtaBox.classList.remove("hidden");
-      catalogGrid.innerHTML = `<div class="col-span-full bg-white rounded-2xl p-6 text-center border border-slate-200 text-xs font-bold text-slate-500"><i class="fa-solid fa-spinner fa-spin text-emerald-600 ml-1"></i> جاري تحميل منتجات المكتبة...</div>`;
+      catalogGrid.innerHTML = buildCatalogLoadingCardHtml();
     }
     return;
   }
@@ -1591,22 +1632,24 @@ function renderCartDrawer() {
 
   cartItemsList.innerHTML = cartItems
     .map((item) => {
-      const itemTotal = item.price * item.quantity;
-      productsSubtotal += itemTotal;
+      const unitPrice = Number(item.price || 0);
+      const qty = Math.max(1, Number(item.quantity || 1));
+      const itemTotal = Math.round(unitPrice * qty * 100) / 100;
+      productsSubtotal = Math.round((productsSubtotal + itemTotal) * 100) / 100;
       return `
         <div class="bg-slate-50 rounded-2xl p-3 border border-slate-200 flex items-center justify-between gap-3">
           <div class="space-y-0.5 flex-1 min-w-0">
             <h5 class="text-xs font-bold text-slate-900 truncate">${escapeHtml(item.title)}</h5>
-            <p class="text-[10px] text-slate-500">${escapeHtml(item.grade || "")}</p>
+            <p class="text-[10px] text-slate-500 truncate">${escapeHtml(item.grade || "")}</p>
             <div class="text-xs font-black text-emerald-700">
-              ${item.price} ج.م × ${item.quantity} = ${itemTotal} ج.م
+              ${formatEgp(unitPrice)} ج.م × ${qty} = ${formatEgp(itemTotal)} ج.م
             </div>
           </div>
           <div class="flex items-center gap-1.5 shrink-0">
             <button onclick="changeCartItemQty('${escapeHtml(item.id)}', -1)" class="w-7 h-7 rounded-lg bg-white border border-slate-300 flex items-center justify-center text-slate-700 text-xs font-bold hover:bg-slate-100">
               <i class="fa-solid fa-minus"></i>
             </button>
-            <span class="w-6 text-center text-xs font-bold text-slate-900">${item.quantity}</span>
+            <span class="w-6 text-center text-xs font-bold text-slate-900">${qty}</span>
             <button onclick="changeCartItemQty('${escapeHtml(item.id)}', 1)" class="w-7 h-7 rounded-lg bg-white border border-slate-300 flex items-center justify-center text-slate-700 text-xs font-bold hover:bg-slate-100">
               <i class="fa-solid fa-plus"></i>
             </button>
@@ -1622,12 +1665,13 @@ function renderCartDrawer() {
   const selectedDelivery = document.querySelector('input[name="deliveryMethod"]:checked')?.value || "pickup";
   const deliveryFee = Math.max(0, Number(currentPrintRates.deliveryFee ?? 20));
   const appliedDelivery = selectedDelivery === "delivery" ? deliveryFee : 0;
+  const grandTotal = Math.round((productsSubtotal + appliedDelivery) * 100) / 100;
 
   if (cartDeliveryFeeValue) {
-    cartDeliveryFeeValue.textContent = deliveryFee > 0 ? `${deliveryFee} ج.م` : "مجاناً";
+    cartDeliveryFeeValue.textContent = deliveryFee > 0 ? `${formatEgp(deliveryFee)} ج.م` : "مجاناً";
   }
   if (cartDrawerTotalPrice) {
-    cartDrawerTotalPrice.textContent = `${productsSubtotal + appliedDelivery} ج.م`;
+    cartDrawerTotalPrice.textContent = `${formatEgp(grandTotal)} ج.م`;
   }
 }
 
@@ -1681,29 +1725,31 @@ function sendCartOrderWhatsApp() {
   message += `أود تأكيد طلب المنتجات التالية:\n\n`;
 
   cartItems.forEach((item, idx) => {
-    const sub = item.price * item.quantity;
-    productsSubtotal += sub;
+    const unitPrice = Number(item.price || 0);
+    const qty = Math.max(1, Number(item.quantity || 1));
+    const sub = Math.round(unitPrice * qty * 100) / 100;
+    productsSubtotal = Math.round((productsSubtotal + sub) * 100) / 100;
     const catalogMatch = currentBooks.find((b) => b.id === item.id);
     const stageText = item.stage || catalogMatch?.stage || "عام";
     const gradeText = item.grade || catalogMatch?.grade || "جميع الصفوف";
     const subjectText = item.subject || catalogMatch?.subject || "عام";
     message += `${idx + 1}. *${item.title}*\n`;
     message += `   • المرحلة: ${stageText} | الصف: ${gradeText} | المادة: ${subjectText}\n`;
-    message += `   • الكمية: ${item.quantity} × ${item.price} ج.م = *${sub} ج.م*\n\n`;
+    message += `   • الكمية: ${qty} × ${formatEgp(unitPrice)} ج.م = *${formatEgp(sub)} ج.م*\n\n`;
   });
 
   const deliveryFee = Math.max(0, Number(currentPrintRates.deliveryFee ?? 20));
   const appliedDelivery = deliveryMethod === "delivery" ? deliveryFee : 0;
-  const grandTotal = productsSubtotal + appliedDelivery;
+  const grandTotal = Math.round((productsSubtotal + appliedDelivery) * 100) / 100;
 
   message += `─────────────────────\n`;
-  message += `🧾 إجمالي المنتجات: ${productsSubtotal} ج.م\n`;
+  message += `🧾 إجمالي المنتجات: ${formatEgp(productsSubtotal)} ج.م\n`;
   message += `🚚 طريقة الاستلام: ${deliveryMethod === "delivery" ? "توصيل للمنزل" : "استلام وتجهيز مسبق من المكتبة"}\n`;
   if (deliveryMethod === "delivery") {
-    message += `🛵 رسوم التوصيل: ${deliveryFee > 0 ? `${deliveryFee} ج.م` : "مجاناً"}\n`;
+    message += `🛵 رسوم التوصيل: ${deliveryFee > 0 ? `${formatEgp(deliveryFee)} ج.م` : "مجاناً"}\n`;
     message += `📍 عنوان التوصيل: ${deliveryAddress}\n`;
   }
-  message += `💰 الإجمالي النهائي: ${grandTotal} ج.م\n`;
+  message += `💰 الإجمالي النهائي: ${formatEgp(grandTotal)} ج.م\n`;
   message += `👤 اسم العميل: ${customerName}\n`;
   message += `\nشكراً لتعاونكم!`;
 
@@ -1814,99 +1860,184 @@ async function handlePrintFileSelection(file) {
   }
 }
 
-function updatePrintCalculator() {
+function getPrintCalculationSummary() {
   const pages = Math.max(1, parseInt(document.getElementById("calcPagesCount")?.value, 10) || 1);
   const copies = Math.max(1, parseInt(document.getElementById("calcCopiesCount")?.value, 10) || 1);
   const colorSelect = document.getElementById("calcColorType");
+  const sideSelect = document.getElementById("calcSideType");
   const bindingSelect = document.getElementById("calcBindingType");
-  const colorType = colorSelect?.value || "bw";
+
+  const colorType = colorSelect?.value === "color" ? "color" : "bw";
+  const sideType = sideSelect?.value === "double" ? "double" : "single";
   const bindingType = bindingSelect?.value || "wire";
 
   const bwRate = Number(currentPrintRates.bwPage ?? 0.75);
   const colorRate = Number(currentPrintRates.colorPage ?? 2.50);
   const wireRate = Number(currentPrintRates.bindingWire ?? 25.00);
+  const thermalRate = Number(currentPrintRates.bindingThermal ?? 20.00);
   const plasticRate = Number(currentPrintRates.bindingPlastic ?? 15.00);
   const stapleRate = Number(currentPrintRates.bindingStaple ?? 3.00);
+
+  const pageRate = colorType === "color" ? colorRate : bwRate;
+  const sideMultiplier = sideType === "double" ? 0.85 : 1;
+  const colorLabel = colorType === "color" ? "ألوان عالية الدقة" : "أبيض وأسود ليزر";
+  const sideLabelShort = sideType === "double" ? "وجهين (وش وضهر - خصم 15%)" : "وجه واحد";
+
+  let bindingRate = 0;
+  let bindingName = "بدون تغليف";
+  let bindingHintText = "بدون تغليف (0.00 ج.م)";
+
+  if (bindingType === "wire") {
+    bindingRate = wireRate;
+    bindingName = "تجليد سلك حديد";
+    bindingHintText = `تجليد سلك حديد ${wireRate.toFixed(2)} ج.م للنسخة`;
+  } else if (bindingType === "thermal") {
+    bindingRate = thermalRate;
+    bindingName = "تغليف حراري";
+    bindingHintText = `تغليف حراري ${thermalRate.toFixed(2)} ج.م للنسخة`;
+  } else if (bindingType === "plastic") {
+    bindingRate = plasticRate;
+    bindingName = "تغليف بلاستيك";
+    bindingHintText = `تغليف بلاستيك ${plasticRate.toFixed(2)} ج.م للنسخة`;
+  } else if (bindingType === "staple") {
+    bindingRate = stapleRate;
+    bindingName = "تدبيس عادي";
+    bindingHintText = `تدبيس عادي ${stapleRate.toFixed(2)} ج.م للنسخة`;
+  }
+
+  const perCopyPagesCost = Math.round(pages * pageRate * sideMultiplier * 100) / 100;
+  const unitPrice = Math.round((perCopyPagesCost + bindingRate) * 100) / 100;
+  const pagesTotal = Math.round(perCopyPagesCost * copies * 100) / 100;
+  const bindingTotal = Math.round(bindingRate * copies * 100) / 100;
+  const grandTotal = Math.round(unitPrice * copies * 100) / 100;
+
+  return {
+    pages,
+    copies,
+    colorType,
+    colorLabel,
+    sideType,
+    sideLabelShort,
+    sideMultiplier,
+    bindingType,
+    bindingName,
+    bindingHintText,
+    bwRate,
+    colorRate,
+    wireRate,
+    thermalRate,
+    plasticRate,
+    stapleRate,
+    bindingRate,
+    unitPrice,
+    pagesTotal,
+    bindingTotal,
+    grandTotal
+  };
+}
+
+function updatePrintCalculator() {
+  const summary = getPrintCalculationSummary();
+  const colorSelect = document.getElementById("calcColorType");
+  const sideSelect = document.getElementById("calcSideType");
+  const bindingSelect = document.getElementById("calcBindingType");
 
   if (colorSelect) {
     const bwOpt = colorSelect.querySelector('option[value="bw"]');
     const colOpt = colorSelect.querySelector('option[value="color"]');
-    if (bwOpt) bwOpt.textContent = `أبيض وأسود ليزر (${bwRate.toFixed(2)} ج.م / ورقة)`;
-    if (colOpt) colOpt.textContent = `ألوان عالية الدقة (${colorRate.toFixed(2)} ج.م / ورقة)`;
+    if (bwOpt) bwOpt.textContent = `أبيض وأسود ليزر (${summary.bwRate.toFixed(2)} ج.م / ورقة)`;
+    if (colOpt) colOpt.textContent = `ألوان عالية الدقة (${summary.colorRate.toFixed(2)} ج.م / ورقة)`;
+  }
+
+  if (sideSelect) {
+    const singleOpt = sideSelect.querySelector('option[value="single"]');
+    const doubleOpt = sideSelect.querySelector('option[value="double"]');
+    if (singleOpt) singleOpt.textContent = `وجه واحد (100% من سعر الصفحة)`;
+    if (doubleOpt) doubleOpt.textContent = `وجهين - وش وضهر (خصم 15%)`;
   }
 
   if (bindingSelect) {
     const wireOpt = bindingSelect.querySelector('option[value="wire"]');
+    const thermalOpt = bindingSelect.querySelector('option[value="thermal"]');
     const plasticOpt = bindingSelect.querySelector('option[value="plastic"]');
     const stapleOpt = bindingSelect.querySelector('option[value="staple"]');
     const noneOpt = bindingSelect.querySelector('option[value="none"]');
-    if (wireOpt) wireOpt.textContent = `تغليف سلك حديد (+${wireRate.toFixed(2)} ج.م)`;
-    if (plasticOpt) plasticOpt.textContent = `تغليف بلاستيك (+${plasticRate.toFixed(2)} ج.م)`;
-    if (stapleOpt) stapleOpt.textContent = `تدبيس (+${stapleRate.toFixed(2)} ج.م)`;
+    if (wireOpt) wireOpt.textContent = `تجليد سلك حديد (+${summary.wireRate.toFixed(2)} ج.م)`;
+    if (thermalOpt) thermalOpt.textContent = `تغليف حراري (+${summary.thermalRate.toFixed(2)} ج.م)`;
+    if (plasticOpt) plasticOpt.textContent = `تغليف بلاستيك (+${summary.plasticRate.toFixed(2)} ج.م)`;
+    if (stapleOpt) stapleOpt.textContent = `تدبيس عادي (+${summary.stapleRate.toFixed(2)} ج.م)`;
     if (noneOpt) noneOpt.textContent = `بدون تغليف (مجاناً)`;
   }
 
-  const pageRate = colorType === "color" ? colorRate : bwRate;
-  let bindingRate = 0;
-  let bindingLabel = "بدون تغليف";
-  if (bindingType === "wire") {
-    bindingRate = wireRate;
-    bindingLabel = `تغليف سلك حديد ${wireRate.toFixed(2)} ج.م للنسخة`;
-  } else if (bindingType === "plastic") {
-    bindingRate = plasticRate;
-    bindingLabel = `تغليف بلاستيك ${plasticRate.toFixed(2)} ج.م للنسخة`;
-  } else if (bindingType === "staple") {
-    bindingRate = stapleRate;
-    bindingLabel = `تدبيس ${stapleRate.toFixed(2)} ج.م للنسخة`;
-  } else {
-    bindingLabel = "بدون تغليف (0.00 ج.م)";
-  }
-
   const colorHint = document.getElementById("calcColorRateHint");
+  const sideHint = document.getElementById("calcSideRateHint");
   const bindingHint = document.getElementById("calcBindingRateHint");
+  const costSideLabel = document.getElementById("costSideLabel");
+
   if (colorHint) {
-    colorHint.textContent = `سعر الورقة: أبيض وأسود ${bwRate.toFixed(2)} ج.م • ألوان ${colorRate.toFixed(2)} ج.م`;
+    colorHint.textContent = `سعر الورقة: أبيض وأسود ${summary.bwRate.toFixed(2)} ج.م • ألوان ${summary.colorRate.toFixed(2)} ج.م`;
+  }
+  if (sideHint) {
+    sideHint.textContent =
+      summary.sideType === "double"
+        ? "المختار الآن: وجهين (وش وضهر) مع خصم 15% على تكلفة الورق"
+        : "وجه واحد: السعر الكامل • وجهين: توفير 15% على الورق";
   }
   if (bindingHint) {
-    bindingHint.textContent = `تكلفة التغليف المختار: ${bindingLabel}`;
+    bindingHint.textContent = `تكلفة التغليف المختار: ${summary.bindingHintText}`;
   }
-
-  const pagesTotal = pages * pageRate * copies;
-  const bindingTotal = bindingRate * copies;
-  const grandTotal = pagesTotal + bindingTotal;
+  if (costSideLabel) {
+    costSideLabel.textContent = summary.sideType === "double" ? "وجهين - خصم 15%" : "وجه واحد";
+  }
 
   const costPagesBreakdown = document.getElementById("costPagesBreakdown");
   const costBindingBreakdown = document.getElementById("costBindingBreakdown");
   const costTotalEstimate = document.getElementById("costTotalEstimate");
 
-  if (costPagesBreakdown) costPagesBreakdown.textContent = `${pagesTotal.toFixed(2)} ج.م`;
-  if (costBindingBreakdown) costBindingBreakdown.textContent = `${bindingTotal.toFixed(2)} ج.م`;
-  if (costTotalEstimate) costTotalEstimate.textContent = `${grandTotal.toFixed(2)} ج.م`;
+  if (costPagesBreakdown) costPagesBreakdown.textContent = `${summary.pagesTotal.toFixed(2)} ج.م`;
+  if (costBindingBreakdown) costBindingBreakdown.textContent = `${summary.bindingTotal.toFixed(2)} ج.م`;
+  if (costTotalEstimate) costTotalEstimate.textContent = `${summary.grandTotal.toFixed(2)} ج.م`;
+}
+
+function addPrintOrderToCart() {
+  const summary = getPrintCalculationSummary();
+  const docFile = document.getElementById("printDocInput")?.files[0];
+  const fileName = docFile ? docFile.name : "مذكرة PDF";
+
+  const printCartItem = {
+    id: `print-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+    title: `طباعة: ${fileName} (${summary.pages} صفحة)`,
+    price: summary.unitPrice,
+    grade: `${summary.colorLabel} • ${summary.sideType === "double" ? "وجهين (خصم 15%)" : "وجه واحد"} • ${summary.bindingName}`,
+    stage: "خدمات الطباعة",
+    subject: `${summary.pages} صفحة`,
+    quantity: summary.copies
+  };
+
+  cartItems.push(printCartItem);
+  try {
+    localStorage.setItem(STORAGE_KEYS.CART, JSON.stringify(cartItems));
+  } catch (_) {}
+  updateCartBadges();
+  renderCartDrawer();
+  showToastNotification(`تمت إضافة طلب الطباعة (${summary.pages} صفحة × ${summary.copies}) إلى السلة الذكية!`);
+  return true;
 }
 
 function sendPrintOrderWhatsApp() {
+  const summary = getPrintCalculationSummary();
   const docFile = document.getElementById("printDocInput")?.files[0];
   const fileName = docFile ? docFile.name : "مذكرة دراسية (سيتم إرفاقها يدوياً بالمحادثة)";
-  const pages = Math.max(1, parseInt(document.getElementById("calcPagesCount")?.value, 10) || 1);
-  const copies = Math.max(1, parseInt(document.getElementById("calcCopiesCount")?.value, 10) || 1);
-  const colorType = document.getElementById("calcColorType")?.value === "color" ? "ألوان عالية الدقة" : "أبيض وأسود ليزر";
-
-  let bindingText = "بدون تغليف";
-  const bindingType = document.getElementById("calcBindingType")?.value;
-  if (bindingType === "wire") bindingText = "تغليف سلك حديد";
-  else if (bindingType === "plastic") bindingText = "تغليف بلاستيك";
-  else if (bindingType === "staple") bindingText = "تدبيس";
-
-  const totalEstimate = document.getElementById("costTotalEstimate")?.textContent || "";
 
   let msg = `مرحباً مكتبة نهر العلم (إدارة أ/ إيهاب)،\n`;
   msg += `طلب خدمة طباعة وتصوير مذكرة:\n\n`;
   msg += `📄 اسم الملف: ${fileName}\n`;
-  msg += `📑 عدد الصفحات: ${pages} صفحة\n`;
-  msg += `🔢 عدد النسخ: ${copies} نسخة\n`;
-  msg += `🎨 نوع الطباعة: ${colorType}\n`;
-  msg += `📎 نوع التغليف: ${bindingText}\n`;
-  msg += `💵 التكلفة الإجمالية المقدرة: ${totalEstimate}\n\n`;
+  msg += `📑 عدد الصفحات: ${summary.pages} صفحة\n`;
+  msg += `🔢 عدد النسخ: ${summary.copies} نسخة\n`;
+  msg += `🎨 نوع الطباعة: ${summary.colorLabel}\n`;
+  msg += `🖨️ نظام الوجه: ${summary.sideLabelShort}\n`;
+  msg += `📎 نوع التغليف والتجليد: ${summary.bindingName}\n`;
+  msg += `💵 التكلفة الإجمالية المقدرة: ${summary.grandTotal.toFixed(2)} ج.م\n\n`;
   msg += `سأقوم بإرفاق ملف المذكرة الآن هنا داخل المحادثة، أرجو تأكيد التجهيز!`;
 
   const url = `https://wa.me/${getStoreWhatsAppNumber()}?text=${encodeURIComponent(msg)}`;
@@ -1996,6 +2127,7 @@ async function resolveBestApkDownloadUrl() {
 function handleInstallButtonVisibility() {
   const container = document.getElementById("installBtnContainer");
   const footerApkBtn = document.getElementById("footerApkDownloadBtn");
+  const installPwaBtn = document.getElementById("installPwaBtn");
 
   const isRunningNative =
     window.isNativeApp === true ||
@@ -2009,6 +2141,12 @@ function handleInstallButtonVisibility() {
     } else {
       container.classList.remove("hidden");
     }
+  }
+
+  if (installPwaBtn) {
+    const canShowPwa = !isRunningNative && Boolean(deferredInstallPrompt);
+    installPwaBtn.classList.toggle("hidden", !canShowPwa);
+    installPwaBtn.style.display = canShowPwa ? "inline-flex" : "none";
   }
 
   if (footerApkBtn) {
@@ -2482,15 +2620,19 @@ function mountFullAdminPanel() {
                 <input type="number" step="0.10" min="0" id="rateColorPage" class="w-full text-xs bg-slate-900 border border-slate-700 rounded-xl px-3 py-2.5 text-white font-bold" />
               </div>
               <div>
-                <label class="block text-xs font-bold text-slate-300 mb-1">تغليف سلك حديد (ج.م):</label>
+                <label class="block text-xs font-bold text-slate-300 mb-1">تجليد سلك حديد (ج.م):</label>
                 <input type="number" step="0.50" min="0" id="rateBindingWire" class="w-full text-xs bg-slate-900 border border-slate-700 rounded-xl px-3 py-2.5 text-white font-bold" />
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-slate-300 mb-1">تغليف حراري (ج.م):</label>
+                <input type="number" step="0.50" min="0" id="rateBindingThermal" class="w-full text-xs bg-slate-900 border border-slate-700 rounded-xl px-3 py-2.5 text-white font-bold" />
               </div>
               <div>
                 <label class="block text-xs font-bold text-slate-300 mb-1">تغليف بلاستيك (ج.م):</label>
                 <input type="number" step="0.50" min="0" id="rateBindingPlastic" class="w-full text-xs bg-slate-900 border border-slate-700 rounded-xl px-3 py-2.5 text-white font-bold" />
               </div>
               <div>
-                <label class="block text-xs font-bold text-slate-300 mb-1">التدبيس (ج.م):</label>
+                <label class="block text-xs font-bold text-slate-300 mb-1">تدبيس عادي (ج.م):</label>
                 <input type="number" step="0.50" min="0" id="rateBindingStaple" class="w-full text-xs bg-slate-900 border border-slate-700 rounded-xl px-3 py-2.5 text-white font-bold" />
               </div>
               <div class="bg-amber-500/10 border border-amber-500/30 rounded-xl p-2.5">
@@ -3171,6 +3313,7 @@ function populatePrintingRatesForm() {
   const rateColor = document.getElementById("rateColorPage");
   const rateStaple = document.getElementById("rateBindingStaple");
   const ratePlastic = document.getElementById("rateBindingPlastic");
+  const rateThermal = document.getElementById("rateBindingThermal");
   const rateWire = document.getElementById("rateBindingWire");
   const rateDelivery = document.getElementById("rateDeliveryFee");
 
@@ -3178,6 +3321,7 @@ function populatePrintingRatesForm() {
   if (rateColor) rateColor.value = currentPrintRates.colorPage;
   if (rateStaple) rateStaple.value = currentPrintRates.bindingStaple;
   if (ratePlastic) ratePlastic.value = currentPrintRates.bindingPlastic;
+  if (rateThermal) rateThermal.value = currentPrintRates.bindingThermal ?? 20;
   if (rateWire) rateWire.value = currentPrintRates.bindingWire;
   if (rateDelivery) rateDelivery.value = currentPrintRates.deliveryFee ?? 20;
 }
@@ -3193,6 +3337,7 @@ function handleSavePrintingRates(e) {
   currentPrintRates.colorPage = parseNonNeg("rateColorPage", 2.50);
   currentPrintRates.bindingStaple = parseNonNeg("rateBindingStaple", 3.00);
   currentPrintRates.bindingPlastic = parseNonNeg("rateBindingPlastic", 15.00);
+  currentPrintRates.bindingThermal = parseNonNeg("rateBindingThermal", 20.00);
   currentPrintRates.bindingWire = parseNonNeg("rateBindingWire", 25.00);
   currentPrintRates.deliveryFee = parseNonNeg("rateDeliveryFee", 20.00);
 
@@ -3525,10 +3670,27 @@ function bootStorefront() {
   document.getElementById("noResultsRequestWhatsAppBtn")?.addEventListener("click", openRequestMissingItemWhatsApp);
   document.getElementById("bottomRequestWhatsAppBtn")?.addEventListener("click", openRequestMissingItemWhatsApp);
 
-  // الاحتفاظ بحدث PWA اختيارياً مع إبقاء زر التثبيت مخصصاً للتحميل المباشر لملف APK
+  // دعم التثبيت السريع كتطبيق ويب (PWA) بجانب زر التحميل المباشر لملف APK
   window.addEventListener("beforeinstallprompt", (e) => {
     e.preventDefault();
     deferredInstallPrompt = e;
+    handleInstallButtonVisibility();
+  });
+
+  window.addEventListener("appinstalled", () => {
+    deferredInstallPrompt = null;
+    handleInstallButtonVisibility();
+    showToastNotification("تم تثبيت تطبيق مكتبة نهر العلم على جهازك بنجاح!");
+  });
+
+  const installPwaBtn = document.getElementById("installPwaBtn");
+  installPwaBtn?.addEventListener("click", async () => {
+    if (!deferredInstallPrompt) return;
+    try {
+      deferredInstallPrompt.prompt();
+      await deferredInstallPrompt.userChoice;
+    } catch (_) {}
+    deferredInstallPrompt = null;
     handleInstallButtonVisibility();
   });
 
@@ -3741,7 +3903,7 @@ function bootStorefront() {
   document.getElementById("printingTabOpenCalcBtn")?.addEventListener("click", openPrint);
   document.getElementById("closePrintModalBtn")?.addEventListener("click", closePrint);
 
-  ["calcPagesCount", "calcCopiesCount", "calcColorType", "calcBindingType"].forEach((id) => {
+  ["calcPagesCount", "calcCopiesCount", "calcColorType", "calcSideType", "calcBindingType"].forEach((id) => {
     document.getElementById(id)?.addEventListener("input", updatePrintCalculator);
     document.getElementById(id)?.addEventListener("change", updatePrintCalculator);
   });
@@ -3749,6 +3911,12 @@ function bootStorefront() {
   document.getElementById("printDocInput")?.addEventListener("change", (e) => {
     const file = e.target.files?.[0];
     if (file) handlePrintFileSelection(file);
+  });
+  document.getElementById("addPrintToCartBtn")?.addEventListener("click", () => {
+    if (addPrintOrderToCart()) {
+      closePrint();
+      openCart();
+    }
   });
   document.getElementById("sendPrintOrderWhatsAppBtn")?.addEventListener("click", sendPrintOrderWhatsApp);
 
