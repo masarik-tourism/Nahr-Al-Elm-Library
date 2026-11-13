@@ -220,6 +220,7 @@ const DEFAULT_BOOKS = [
     stage: "كي جي",
     grade: "رياض الأطفال (KG)",
     subject: "تأسيس وأنشطة",
+    contents: "8 كراسات مربعات و9 أسطر + أقلام رصاص مثلثية + ألوان شمع 12 لون + صلصال آمن + صمغ ومقلمة قماش",
     series: "عروض نهر العلم",
     price: 295,
     originalPrice: 360,
@@ -231,11 +232,12 @@ const DEFAULT_BOOKS = [
   },
   {
     id: "sup-02",
-    title: "باكدج السبلايز الذهبي للمرحلة الابتدائية (12 كراسة + أقلام + ألوان)",
+    title: "باكدج السبلايز الذهبي للمرحلة الابتدائية",
     category: "supplies",
     stage: "ابتدائي",
     grade: "من الأول إلى السادس الابتدائي",
     subject: "كافة المواد",
+    contents: "12 كراسة مسطرة 28 ورقة + 6 أقلام جاف ورصاص + علبة ألوان خشب + طقم هندسة + جلاد شفاف وتيكيت",
     series: "عروض نهر العلم",
     price: 340,
     originalPrice: 420,
@@ -247,11 +249,12 @@ const DEFAULT_BOOKS = [
   },
   {
     id: "sup-03",
-    title: "باكدج سبلايز المرحلة الإعدادية (كشاكيل سلك + هندسة + أقلام)",
+    title: "باكدج سبلايز المرحلة الإعدادية المتكامل",
     category: "supplies",
     stage: "إعدادي",
     grade: "من الأول إلى الثالث الإعدادي",
     subject: "مجموعة متكاملة",
+    contents: "6 كشاكيل سلك 100 ورقة + 5 كراسات رسم ومربعات + علبة أقلام جاف + طقم هندسة معدني + هايلايتر",
     series: "عروض نهر العلم",
     price: 385,
     originalPrice: 460,
@@ -263,11 +266,12 @@ const DEFAULT_BOOKS = [
   },
   {
     id: "sup-04",
-    title: "باكدج الثانوية العامة الشامل (كشاكيل جامعية + هايلايتر + نوت)",
+    title: "باكدج الثانوية العامة الشامل للتفوق",
     category: "supplies",
     stage: "ثانوي",
     grade: "المرحلة الثانوية",
     subject: "تنظيم ومذاكرة",
+    contents: "8 كشاكيل سلك جامعية 140 ورقة + طقم أقلام سريعة الجفاف + 4 أقلام هايلايتر + ستيكي نوتس + فايلات تنظيم",
     series: "عروض نهر العلم",
     price: 425,
     originalPrice: 510,
@@ -766,6 +770,7 @@ function normalizeProductItem(raw, fallbackKey) {
     stage: String(raw.stage || (category === "books" || category === "supplies" ? "ابتدائي" : "عام")).trim(),
     grade: String(raw.grade || (category === "books" || category === "supplies" ? "جميع الصفوف" : "جميع المراحل")).trim(),
     subject: String(raw.subject || (category === "supplies" ? "باكدج متكامل" : "عام")).trim(),
+    contents: String(raw.contents || (category === "supplies" ? raw.subject || "" : "")).trim(),
     series: String(raw.series || "مكتبة نهر العلم").trim(),
     price: !isNaN(price) && price >= 0 ? price : 0,
     originalPrice: originalPrice !== null && !isNaN(originalPrice) && originalPrice > price ? originalPrice : null,
@@ -979,8 +984,10 @@ function toggleEducationalFiltersVisibility() {
   const sectionHeading = document.getElementById("activeSectionHeading");
 
   if (filtersPanel) {
-    const shouldShowFilters = activeCategory === "books" || activeCategory === "supplies";
+    const shouldShowFilters =
+      activeCategory === "all" || activeCategory === "books" || activeCategory === "supplies";
     filtersPanel.classList.toggle("hidden", !shouldShowFilters);
+    filtersPanel.style.display = shouldShowFilters ? "block" : "none";
   }
 
   if (printingBanner) {
@@ -1012,57 +1019,67 @@ function populateDropdownFilters() {
     pool = pool.filter((b) => b.stage === selectedStage);
   }
 
-  // تعبئة الصفوف الدراسية
+  // تعبئة الصفوف الدراسية ديناميكياً حسب المرحلة المختارة
   const grades = Array.from(new Set(pool.map((b) => b.grade))).filter(Boolean);
   const prevGrade = gradeSelect.value;
+  const nextGrade = grades.includes(prevGrade) ? prevGrade : "all";
   gradeSelect.innerHTML = `<option value="all">كافة الصفوف (${grades.length})</option>`;
   grades.forEach((grade) => {
     const opt = document.createElement("option");
     opt.value = grade;
     opt.textContent = grade;
-    if (grade === prevGrade) opt.selected = true;
+    if (grade === nextGrade) opt.selected = true;
     gradeSelect.appendChild(opt);
   });
+  gradeSelect.value = nextGrade;
 
-  const selectedGrade = gradeSelect.value;
   let subjectPool = pool;
-  if (selectedGrade !== "all") {
-    subjectPool = pool.filter((b) => b.grade === selectedGrade);
+  if (nextGrade !== "all") {
+    subjectPool = pool.filter((b) => b.grade === nextGrade);
   }
 
-  // تعبئة المواد
+  // تعبئة المواد ديناميكياً حسب المرحلة والصف المختار
   const subjects = Array.from(new Set(subjectPool.map((b) => b.subject))).filter(Boolean);
   const prevSubject = subjectSelect.value;
+  const nextSubject = subjects.includes(prevSubject) ? prevSubject : "all";
   subjectSelect.innerHTML = `<option value="all">كافة المواد (${subjects.length})</option>`;
   subjects.forEach((subject) => {
     const opt = document.createElement("option");
     opt.value = subject;
     opt.textContent = subject;
-    if (subject === prevSubject) opt.selected = true;
+    if (subject === nextSubject) opt.selected = true;
     subjectSelect.appendChild(opt);
   });
+  subjectSelect.value = nextSubject;
 
-  // تعبئة دور النشر / السلاسل
+  // تعبئة دور النشر / السلاسل ديناميكياً
   const publishers = Array.from(new Set(subjectPool.map((b) => b.series))).filter(Boolean);
   const prevPublisher = publisherSelect.value;
+  const nextPublisher = publishers.includes(prevPublisher) ? prevPublisher : "all";
   publisherSelect.innerHTML = `<option value="all">كافة دور النشر (${publishers.length})</option>`;
   publishers.forEach((pub) => {
     const opt = document.createElement("option");
     opt.value = pub;
     opt.textContent = pub;
-    if (pub === prevPublisher) opt.selected = true;
+    if (pub === nextPublisher) opt.selected = true;
     publisherSelect.appendChild(opt);
   });
+  publisherSelect.value = nextPublisher;
 }
 
 function getFilteredProducts() {
+  if (!Array.isArray(currentBooks) || (currentBooks.length === 0 && !isCloudSyncLoading)) {
+    currentBooks = DEFAULT_BOOKS.map((b) => ({ ...b }));
+  }
+
   const stage = document.getElementById("stageSelect")?.value || "all";
   const grade = document.getElementById("gradeSelect")?.value || "all";
   const subject = document.getElementById("subjectSelect")?.value || "all";
   const publisher = document.getElementById("publisherSelect")?.value || "all";
   const query = searchQuery.toLowerCase().trim();
 
-  const useEduFilters = activeCategory === "books" || activeCategory === "supplies";
+  const useEduFilters =
+    activeCategory === "all" || activeCategory === "books" || activeCategory === "supplies";
 
   return currentBooks.filter((item) => {
     const matchCategory = activeCategory === "all" || item.category === activeCategory;
@@ -1076,7 +1093,7 @@ function getFilteredProducts() {
     }
 
     if (query) {
-      const searchable = `${item.title} ${item.grade} ${item.subject} ${item.series} ${item.stage} ${item.badge || ""}`.toLowerCase();
+      const searchable = `${item.title} ${item.contents || ""} ${item.grade} ${item.subject} ${item.series} ${item.stage} ${item.badge || ""}`.toLowerCase();
       if (!searchable.includes(query)) return false;
     }
 
@@ -1218,14 +1235,118 @@ function renderCatalogGrid() {
       const thumbUrl = resolveProductImage(item);
       const fallbackUrl = getFallbackThumbnailSvg(item);
       const hasDiscount = item.originalPrice && item.originalPrice > item.price;
+      const savingsAmount = hasDiscount ? Math.round(item.originalPrice - item.price) : 0;
       const stockText = item.stock || "متوفر";
       const isOutOfStock = stockText.includes("نفذت");
       const isLimited = stockText.includes("محدودة") || stockText.includes("تجهيز");
+      const isSuppliesBundle = item.category === "supplies";
       const stockClass = isOutOfStock
         ? "bg-rose-50 text-rose-700 border-rose-200"
         : isLimited
         ? "bg-amber-50 text-amber-700 border-amber-200"
         : "bg-emerald-50 text-emerald-700 border-emerald-200";
+
+      if (isSuppliesBundle) {
+        const bundleContents = (item.contents || item.subject || "محتويات مدرسية متكاملة").trim();
+        return `
+          <article class="bg-gradient-to-b from-amber-50/70 via-white to-rose-50/40 rounded-2xl border-2 border-amber-200/90 shadow-sm hover:shadow-lg transition-all overflow-hidden flex flex-col justify-between group ${isOutOfStock ? "opacity-85" : ""}">
+            <div>
+              <div class="relative aspect-[4/3] bg-slate-100 overflow-hidden">
+                <img
+                  src="${escapeHtml(thumbUrl)}"
+                  alt="${escapeHtml(item.title)}"
+                  loading="lazy"
+                  decoding="async"
+                  onerror="this.onerror=null; this.src='${fallbackUrl}';"
+                  class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                />
+                <span class="absolute top-2 right-2 bg-gradient-to-r from-rose-600 to-amber-500 text-white text-[9px] sm:text-[10px] font-black px-2.5 py-0.5 rounded-full shadow">
+                  <i class="fa-solid fa-box-open ml-1"></i>${escapeHtml(item.badge || "باكدج سبلايز")}
+                </span>
+                ${hasDiscount ? `
+                  <span class="absolute top-2 left-2 bg-emerald-600 text-white text-[9px] sm:text-[10px] font-black px-2 py-0.5 rounded-full shadow">
+                    وفر ${savingsAmount} ج.م
+                  </span>
+                ` : ""}
+              </div>
+
+              <div class="p-2.5 sm:p-3.5 space-y-2">
+                <div class="flex items-center justify-between gap-1">
+                  <span class="text-[9px] sm:text-[10px] font-bold px-1.5 py-0.5 rounded border ${stockClass} truncate">
+                    ${escapeHtml(stockText)}
+                  </span>
+                  <span class="text-[9px] sm:text-[10px] font-black text-rose-700 bg-rose-50 px-1.5 py-0.5 rounded truncate">
+                    ${escapeHtml(item.stage || "سبلايز")}
+                  </span>
+                </div>
+
+                <h4 class="font-black text-xs sm:text-sm text-slate-900 leading-snug line-clamp-2 min-h-[2.2rem]">
+                  ${escapeHtml(item.title)}
+                </h4>
+
+                <p class="text-[10px] sm:text-[11px] text-slate-600 font-bold truncate">
+                  <i class="fa-solid fa-graduation-cap text-amber-600 ml-1"></i>${escapeHtml(item.grade || "")}
+                </p>
+
+                <div class="bg-white/95 border border-amber-200/80 rounded-xl p-2 text-[10px] text-slate-700 leading-relaxed">
+                  <div class="font-black text-amber-800 mb-0.5 flex items-center gap-1">
+                    <i class="fa-solid fa-list-check text-emerald-600"></i>
+                    <span>محتويات الباكدج:</span>
+                  </div>
+                  <p class="line-clamp-2 font-semibold text-slate-600">${escapeHtml(bundleContents)}</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="px-2.5 pb-2.5 sm:px-3.5 sm:pb-3.5 pt-2 border-t border-amber-200/70 space-y-2 bg-white/70">
+              <div class="flex items-center justify-between gap-1">
+                <div class="flex items-baseline gap-1.5">
+                  <span class="text-rose-700 font-black text-sm sm:text-base">
+                    ${item.price} <span class="text-[11px] font-bold">ج.م</span>
+                  </span>
+                  ${hasDiscount ? `<span class="text-[10px] sm:text-xs text-slate-400 line-through font-bold">${item.originalPrice} ج.م</span>` : ""}
+                </div>
+                <button
+                  type="button"
+                  onclick="shareProductWhatsApp('${escapeHtml(item.id)}')"
+                  title="مشاركة الباكدج مع أصدقائك عبر الواتساب"
+                  class="app-tap-effect w-7 h-7 rounded-lg bg-slate-100 hover:bg-sky-50 text-slate-500 hover:text-sky-600 flex items-center justify-center transition-all border border-slate-200/80"
+                >
+                  <i class="fa-solid fa-share-nodes text-[11px]"></i>
+                </button>
+              </div>
+
+              <div class="flex items-center gap-1.5">
+                <button
+                  onclick="handleAddToCart('${escapeHtml(item.id)}')"
+                  ${isOutOfStock ? "disabled" : ""}
+                  class="app-tap-effect flex-1 flex items-center justify-center gap-1 ${
+                    isOutOfStock
+                      ? "bg-slate-200 text-slate-500 cursor-not-allowed"
+                      : inCartQty > 0
+                      ? "bg-amber-500 hover:bg-amber-600 text-slate-950"
+                      : "bg-gradient-to-r from-rose-600 to-amber-600 hover:from-rose-700 hover:to-amber-700 text-white"
+                  } font-black text-[11px] sm:text-xs py-2 px-2 rounded-xl transition-all shadow-sm"
+                >
+                  <i class="fa-solid ${isOutOfStock ? "fa-ban" : inCartQty > 0 ? "fa-check" : "fa-cart-plus"} text-[11px]"></i>
+                  <span>${isOutOfStock ? "نفذت الكمية" : inCartQty > 0 ? `بالسلة (${inCartQty})` : "أضف الباكدج للسلة"}</span>
+                </button>
+
+                <a
+                  href="${generateItemWhatsAppUrl(item)}"
+                  target="_blank"
+                  rel="noopener"
+                  onclick="recordItemClick('${escapeHtml(item.id)}')"
+                  title="طلب سريع واتساب"
+                  class="app-tap-effect w-9 h-8 sm:h-9 shrink-0 flex items-center justify-center bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl transition-all shadow-sm"
+                >
+                  <i class="fa-brands fa-whatsapp text-sm sm:text-base"></i>
+                </a>
+              </div>
+            </div>
+          </article>
+        `;
+      }
 
       return `
         <article class="bg-white rounded-2xl border border-slate-200/90 shadow-sm hover:shadow-md transition-all overflow-hidden flex flex-col justify-between group ${isOutOfStock ? "opacity-85" : ""}">
@@ -1696,14 +1817,59 @@ async function handlePrintFileSelection(file) {
 function updatePrintCalculator() {
   const pages = Math.max(1, parseInt(document.getElementById("calcPagesCount")?.value, 10) || 1);
   const copies = Math.max(1, parseInt(document.getElementById("calcCopiesCount")?.value, 10) || 1);
-  const colorType = document.getElementById("calcColorType")?.value || "bw";
-  const bindingType = document.getElementById("calcBindingType")?.value || "wire";
+  const colorSelect = document.getElementById("calcColorType");
+  const bindingSelect = document.getElementById("calcBindingType");
+  const colorType = colorSelect?.value || "bw";
+  const bindingType = bindingSelect?.value || "wire";
 
-  const pageRate = colorType === "color" ? currentPrintRates.colorPage : currentPrintRates.bwPage;
+  const bwRate = Number(currentPrintRates.bwPage ?? 0.75);
+  const colorRate = Number(currentPrintRates.colorPage ?? 2.50);
+  const wireRate = Number(currentPrintRates.bindingWire ?? 25.00);
+  const plasticRate = Number(currentPrintRates.bindingPlastic ?? 15.00);
+  const stapleRate = Number(currentPrintRates.bindingStaple ?? 3.00);
+
+  if (colorSelect) {
+    const bwOpt = colorSelect.querySelector('option[value="bw"]');
+    const colOpt = colorSelect.querySelector('option[value="color"]');
+    if (bwOpt) bwOpt.textContent = `أبيض وأسود ليزر (${bwRate.toFixed(2)} ج.م / ورقة)`;
+    if (colOpt) colOpt.textContent = `ألوان عالية الدقة (${colorRate.toFixed(2)} ج.م / ورقة)`;
+  }
+
+  if (bindingSelect) {
+    const wireOpt = bindingSelect.querySelector('option[value="wire"]');
+    const plasticOpt = bindingSelect.querySelector('option[value="plastic"]');
+    const stapleOpt = bindingSelect.querySelector('option[value="staple"]');
+    const noneOpt = bindingSelect.querySelector('option[value="none"]');
+    if (wireOpt) wireOpt.textContent = `تغليف سلك حديد (+${wireRate.toFixed(2)} ج.م)`;
+    if (plasticOpt) plasticOpt.textContent = `تغليف بلاستيك (+${plasticRate.toFixed(2)} ج.م)`;
+    if (stapleOpt) stapleOpt.textContent = `تدبيس (+${stapleRate.toFixed(2)} ج.م)`;
+    if (noneOpt) noneOpt.textContent = `بدون تغليف (مجاناً)`;
+  }
+
+  const pageRate = colorType === "color" ? colorRate : bwRate;
   let bindingRate = 0;
-  if (bindingType === "wire") bindingRate = currentPrintRates.bindingWire;
-  else if (bindingType === "plastic") bindingRate = currentPrintRates.bindingPlastic;
-  else if (bindingType === "staple") bindingRate = currentPrintRates.bindingStaple;
+  let bindingLabel = "بدون تغليف";
+  if (bindingType === "wire") {
+    bindingRate = wireRate;
+    bindingLabel = `تغليف سلك حديد ${wireRate.toFixed(2)} ج.م للنسخة`;
+  } else if (bindingType === "plastic") {
+    bindingRate = plasticRate;
+    bindingLabel = `تغليف بلاستيك ${plasticRate.toFixed(2)} ج.م للنسخة`;
+  } else if (bindingType === "staple") {
+    bindingRate = stapleRate;
+    bindingLabel = `تدبيس ${stapleRate.toFixed(2)} ج.م للنسخة`;
+  } else {
+    bindingLabel = "بدون تغليف (0.00 ج.م)";
+  }
+
+  const colorHint = document.getElementById("calcColorRateHint");
+  const bindingHint = document.getElementById("calcBindingRateHint");
+  if (colorHint) {
+    colorHint.textContent = `سعر الورقة: أبيض وأسود ${bwRate.toFixed(2)} ج.م • ألوان ${colorRate.toFixed(2)} ج.م`;
+  }
+  if (bindingHint) {
+    bindingHint.textContent = `تكلفة التغليف المختار: ${bindingLabel}`;
+  }
 
   const pagesTotal = pages * pageRate * copies;
   const bindingTotal = bindingRate * copies;
@@ -2963,7 +3129,7 @@ function handleQuickAddSuppliesPackage(e) {
   const title = document.getElementById("supQuickTitle")?.value.trim();
   const stage = document.getElementById("supQuickStage")?.value || "ابتدائي";
   const grade = document.getElementById("supQuickGrade")?.value.trim();
-  const subject = document.getElementById("supQuickContents")?.value.trim() || "باكدج متكامل";
+  const contentsText = document.getElementById("supQuickContents")?.value.trim() || "باكدج متكامل";
   const price = parseFloat(document.getElementById("supQuickBundlePrice")?.value);
   const origRaw = parseFloat(document.getElementById("supQuickOriginalPrice")?.value);
   const imageUrl = document.getElementById("supQuickImageUrl")?.value.trim() || "";
@@ -2982,7 +3148,8 @@ function handleQuickAddSuppliesPackage(e) {
     category: "supplies",
     stage,
     grade,
-    subject,
+    subject: contentsText,
+    contents: contentsText,
     series: "عروض نهر العلم",
     price,
     originalPrice,
@@ -3331,11 +3498,18 @@ function selectMainCategory(cat) {
   renderCatalogGrid();
 }
 
-document.addEventListener("DOMContentLoaded", () => {
-  // تهيئة البيانات والملحقات (مع تأجيل PDF.js لحين فتح نافذة الطباعة)
+function bootStorefront() {
+  // تهيئة البيانات والملحقات فوراً مع عزل الأخطاء لضمان ظهور المنتجات
   loadInitialState();
-  initializeFirebase();
-  registerServiceWorkerSafely();
+  try {
+    initializeFirebase();
+  } catch (err) {
+    isCloudSyncLoading = false;
+    console.warn("Firebase init notice:", err);
+  }
+  try {
+    registerServiceWorkerSafely();
+  } catch (_) {}
   renderAnnouncementBanner();
   applyStoreSettingsToPublicUI();
   toggleEducationalFiltersVisibility();
@@ -3346,7 +3520,7 @@ document.addEventListener("DOMContentLoaded", () => {
   updatePrintCalculator();
   setupHiddenAdminTrigger();
   handleInstallButtonVisibility();
-  resolveBestApkDownloadUrl();
+  resolveBestApkDownloadUrl().catch(() => {});
 
   document.getElementById("noResultsRequestWhatsAppBtn")?.addEventListener("click", openRequestMissingItemWhatsApp);
   document.getElementById("bottomRequestWhatsAppBtn")?.addEventListener("click", openRequestMissingItemWhatsApp);
@@ -3386,13 +3560,24 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("mainCategoryTabs")?.scrollIntoView({ behavior: "smooth" });
   });
 
-  // أحداث شريط البحث الفوري
+  // أحداث شريط البحث الفوري + أزرار البحث السريع
   const searchInput = document.getElementById("liveSearchInput");
   const clearSearchBtn = document.getElementById("clearSearchBtn");
   searchInput?.addEventListener("input", (e) => {
     searchQuery = e.target.value || "";
     if (clearSearchBtn) clearSearchBtn.classList.toggle("hidden", !searchQuery);
     renderCatalogGrid();
+  });
+
+  document.querySelectorAll(".quick-search-chip").forEach((chip) => {
+    chip.addEventListener("click", () => {
+      const term = chip.dataset.searchChip || "";
+      searchQuery = term;
+      if (searchInput) searchInput.value = term;
+      if (clearSearchBtn) clearSearchBtn.classList.toggle("hidden", !term);
+      selectMainCategory("all");
+      document.getElementById("catalogGrid")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    });
   });
 
   clearSearchBtn?.addEventListener("click", () => {
@@ -3402,7 +3587,7 @@ document.addEventListener("DOMContentLoaded", () => {
     renderCatalogGrid();
   });
 
-  // أحداث الفلاتر الأربعة المشروطة
+  // أحداث الفلاتر الأربعة المترابطة ديناميكياً
   document.getElementById("stageSelect")?.addEventListener("change", () => {
     populateDropdownFilters();
     renderCatalogGrid();
@@ -3439,7 +3624,7 @@ document.addEventListener("DOMContentLoaded", () => {
   });
   document.getElementById("resetFromNoticeBtn")?.addEventListener("click", resetAllFilters);
 
-  // أحداث سلة الطلبات والتوصيل (Modal Popup)
+  // أحداث سلة الطلبات والتوصيل (Slide-over Drawer) + نافذة الطباعة (Modal)
   const syncBodyModalLock = () => {
     const cartEl = document.getElementById("cartDrawer");
     const printEl = document.getElementById("printModal");
@@ -3449,22 +3634,48 @@ document.addEventListener("DOMContentLoaded", () => {
     document.body.classList.toggle("overflow-hidden", Boolean(anyOpen));
   };
 
+  let cartCloseTimer = null;
   const openCart = () => {
+    if (cartCloseTimer) {
+      clearTimeout(cartCloseTimer);
+      cartCloseTimer = null;
+    }
     const cartEl = document.getElementById("cartDrawer");
+    const cartCard = document.getElementById("cartModalCard");
     if (cartEl) {
       cartEl.classList.remove("hidden");
       cartEl.style.display = "flex";
     }
+    if (cartCard) {
+      cartCard.classList.add("-translate-x-full");
+      const slideIn = () => cartCard.classList.remove("-translate-x-full");
+      if (typeof window.requestAnimationFrame === "function") {
+        window.requestAnimationFrame(() => window.requestAnimationFrame(slideIn));
+      } else {
+        setTimeout(slideIn, 16);
+      }
+    }
     syncBodyModalLock();
     renderCartDrawer();
   };
-  const closeCart = () => {
+  const closeCart = (immediate = false) => {
     const cartEl = document.getElementById("cartDrawer");
-    if (cartEl) {
-      cartEl.classList.add("hidden");
-      cartEl.style.display = "none";
+    const cartCard = document.getElementById("cartModalCard");
+    if (cartCard) {
+      cartCard.classList.add("-translate-x-full");
     }
-    syncBodyModalLock();
+    const finishHide = () => {
+      if (cartEl) {
+        cartEl.classList.add("hidden");
+        cartEl.style.display = "none";
+      }
+      syncBodyModalLock();
+    };
+    if (immediate || !cartEl || cartEl.style.display !== "flex") {
+      finishHide();
+    } else {
+      cartCloseTimer = setTimeout(finishHide, 260);
+    }
   };
 
   const openPrint = () => {
@@ -3487,13 +3698,13 @@ document.addEventListener("DOMContentLoaded", () => {
   };
 
   // تأكيد إخفاء النوافذ المنبثقة عند التهيئة
-  closeCart();
+  closeCart(true);
   closePrint();
 
   document.getElementById("openCartBtn")?.addEventListener("click", openCart);
   document.getElementById("navBottomCart")?.addEventListener("click", openCart);
-  document.getElementById("closeCartBtn")?.addEventListener("click", closeCart);
-  document.getElementById("browseBooksFromCartBtn")?.addEventListener("click", closeCart);
+  document.getElementById("closeCartBtn")?.addEventListener("click", () => closeCart(false));
+  document.getElementById("browseBooksFromCartBtn")?.addEventListener("click", () => closeCart(false));
   document.getElementById("clearCartBtn")?.addEventListener("click", () => {
     if (confirm("هل ترغب في إفراغ السلة بالكامل؟")) clearCart();
   });
@@ -3511,14 +3722,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // إغلاق النوافذ المنبثقة عند الضغط على الخلفية أو زر Escape
   document.getElementById("cartDrawer")?.addEventListener("click", (e) => {
-    if (e.target.id === "cartDrawer") closeCart();
+    if (e.target.id === "cartDrawer") closeCart(false);
   });
   document.getElementById("printModal")?.addEventListener("click", (e) => {
     if (e.target.id === "printModal") closePrint();
   });
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape") {
-      closeCart();
+      closeCart(false);
       closePrint();
     }
   });
@@ -3587,4 +3798,10 @@ document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("dismissBannerBtn")?.addEventListener("click", () => {
     document.getElementById("liveAnnouncementBanner")?.classList.add("hidden");
   });
-});
+}
+
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", bootStorefront);
+} else {
+  bootStorefront();
+}

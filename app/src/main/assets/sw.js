@@ -6,7 +6,7 @@
  * - Uses Fast Network-Race (1200ms) -> Cached Shell + background update for same-origin OTA files.
  */
 
-const CACHE_VERSION = 'nahralelm-ota-v2.2.6';
+const CACHE_VERSION = 'nahralelm-ota-v2.2.7';
 const CACHE_NAME = `nahr-alelm-cache-${CACHE_VERSION}`;
 const CDN_CACHE_NAME = 'nahr-alelm-cdn-v1';
 
