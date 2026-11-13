@@ -1165,17 +1165,26 @@ function renderCatalogGrid() {
     noResultsNotice.style.display = visible ? "block" : "none";
   };
 
+  const setLoadingLabels = (loading) => {
+    if (filteredItemsLoadingLabel) {
+      filteredItemsLoadingLabel.classList.toggle("hidden", !loading);
+      filteredItemsLoadingLabel.style.display = loading ? "inline" : "none";
+    }
+    if (filteredItemsReadyLabel) {
+      filteredItemsReadyLabel.classList.toggle("hidden", loading);
+      filteredItemsReadyLabel.style.display = loading ? "none" : "inline";
+    }
+  };
+
   if (isCloudSyncLoading && items.length === 0) {
-    if (filteredItemsLoadingLabel) filteredItemsLoadingLabel.classList.remove("hidden");
-    if (filteredItemsReadyLabel) filteredItemsReadyLabel.classList.add("hidden");
+    setLoadingLabels(true);
     setNoResultsVisible(false);
     if (missingBookCtaBox) missingBookCtaBox.classList.add("hidden");
     catalogGrid.innerHTML = `<div class="col-span-full bg-white rounded-2xl p-6 text-center border border-slate-200 text-xs font-bold text-slate-500"><i class="fa-solid fa-spinner fa-spin text-emerald-600 ml-1"></i> جاري تحميل منتجات المكتبة...</div>`;
     return;
   }
 
-  if (filteredItemsLoadingLabel) filteredItemsLoadingLabel.classList.add("hidden");
-  if (filteredItemsReadyLabel) filteredItemsReadyLabel.classList.remove("hidden");
+  setLoadingLabels(false);
   if (filteredItemsCount) filteredItemsCount.textContent = items.length;
 
   const hasUserFilter =
