@@ -528,6 +528,7 @@ let deferredInstallPrompt = null;
 let failedLoginAttempts = 0;
 let isAdminAuthenticated = false;
 let activeAdminProfile = "";
+let isCloudSyncLoading = false;
 
 function getWhatsAppInternational(rawNumber) {
   const digits = String(rawNumber || "").replace(/\D/g, "");
@@ -719,12 +720,21 @@ function initializeFirebase() {
         firebase.initializeApp(firebaseConfig);
       }
       firebaseDb = firebase.database();
-      updateSyncStatusUI("متصل سحابياً", true);
+      isCloudSyncLoading = true;
+      updateSyncStatusUI("جاري المزامنة...", true);
       listenToFirebaseUpdates();
+      setTimeout(() => {
+        if (isCloudSyncLoading) {
+          isCloudSyncLoading = false;
+          renderCatalogGrid();
+        }
+      }, 4500);
     } else {
+      isCloudSyncLoading = false;
       updateSyncStatusUI("أسعار محدثة", true);
     }
   } catch (err) {
+    isCloudSyncLoading = false;
     console.warn("Firebase offline fallback active:", err.message);
     updateSyncStatusUI("وضع محلي نشط", false);
   }
@@ -785,20 +795,30 @@ function normalizeFirebaseBooks(rawData) {
 function listenToFirebaseUpdates() {
   if (!firebaseDb) return;
 
-  firebaseDb.ref("books").on("value", (snapshot) => {
-    const incoming = normalizeFirebaseBooks(snapshot.val());
-    if (incoming.length > 0) {
-      currentBooks = incoming;
-      localStorage.setItem(STORAGE_KEYS.BOOKS, JSON.stringify(currentBooks));
-      refreshStorefrontViews();
-    } else {
-      // في حال كانت قاعدة البيانات فارغة، نحقن البيانات الأولية تلقائياً ونرفعها لـ Firebase
-      currentBooks = DEFAULT_BOOKS.map((b) => ({ ...b }));
-      localStorage.setItem(STORAGE_KEYS.BOOKS, JSON.stringify(currentBooks));
-      firebaseDb.ref("books").set(currentBooks).catch(() => {});
-      refreshStorefrontViews();
+  firebaseDb.ref("books").on(
+    "value",
+    (snapshot) => {
+      isCloudSyncLoading = false;
+      updateSyncStatusUI("متصل سحابياً", true);
+      const incoming = normalizeFirebaseBooks(snapshot.val());
+      if (incoming.length > 0) {
+        currentBooks = incoming;
+        localStorage.setItem(STORAGE_KEYS.BOOKS, JSON.stringify(currentBooks));
+        refreshStorefrontViews();
+      } else {
+        // في حال كانت قاعدة البيانات فارغة، نحقن البيانات الأولية تلقائياً ونرفعها لـ Firebase
+        currentBooks = DEFAULT_BOOKS.map((b) => ({ ...b }));
+        localStorage.setItem(STORAGE_KEYS.BOOKS, JSON.stringify(currentBooks));
+        firebaseDb.ref("books").set(currentBooks).catch(() => {});
+        refreshStorefrontViews();
+      }
+    },
+    () => {
+      isCloudSyncLoading = false;
+      updateSyncStatusUI("وضع محلي نشط", false);
+      renderCatalogGrid();
     }
-  });
+  );
 
   firebaseDb.ref("printRates").on("value", (snapshot) => {
     const data = snapshot.val();
@@ -1139,6 +1159,21 @@ function renderCatalogGrid() {
   if (!catalogGrid) return;
 
   const items = getFilteredProducts();
+  const setNoResultsVisible = (visible) => {
+    if (!noResultsNotice) return;
+    noResultsNotice.classList.toggle("hidden", !visible);
+    noResultsNotice.style.display = visible ? "block" : "none";
+  };
+
+  if (isCloudSyncLoading && items.length === 0) {
+    if (filteredItemsLoadingLabel) filteredItemsLoadingLabel.classList.remove("hidden");
+    if (filteredItemsReadyLabel) filteredItemsReadyLabel.classList.add("hidden");
+    setNoResultsVisible(false);
+    if (missingBookCtaBox) missingBookCtaBox.classList.add("hidden");
+    catalogGrid.innerHTML = `<div class="col-span-full bg-white rounded-2xl p-6 text-center border border-slate-200 text-xs font-bold text-slate-500"><i class="fa-solid fa-spinner fa-spin text-emerald-600 ml-1"></i> جاري تحميل منتجات المكتبة...</div>`;
+    return;
+  }
+
   if (filteredItemsLoadingLabel) filteredItemsLoadingLabel.classList.add("hidden");
   if (filteredItemsReadyLabel) filteredItemsReadyLabel.classList.remove("hidden");
   if (filteredItemsCount) filteredItemsCount.textContent = items.length;
@@ -1153,18 +1188,18 @@ function renderCatalogGrid() {
 
   if (items.length === 0) {
     catalogGrid.innerHTML = "";
-    if (hasUserFilter) {
-      if (noResultsNotice) noResultsNotice.classList.remove("hidden");
+    if (!isCloudSyncLoading && hasUserFilter) {
+      setNoResultsVisible(true);
       if (missingBookCtaBox) missingBookCtaBox.classList.add("hidden");
     } else {
-      if (noResultsNotice) noResultsNotice.classList.add("hidden");
+      setNoResultsVisible(false);
       if (missingBookCtaBox) missingBookCtaBox.classList.remove("hidden");
       catalogGrid.innerHTML = `<div class="col-span-full bg-white rounded-2xl p-6 text-center border border-slate-200 text-xs font-bold text-slate-500"><i class="fa-solid fa-spinner fa-spin text-emerald-600 ml-1"></i> جاري تحميل منتجات المكتبة...</div>`;
     }
     return;
   }
 
-  if (noResultsNotice) noResultsNotice.classList.add("hidden");
+  setNoResultsVisible(false);
   if (missingBookCtaBox) missingBookCtaBox.classList.remove("hidden");
 
   catalogGrid.innerHTML = items
@@ -1402,13 +1437,25 @@ function renderCartDrawer() {
 
   if (cartItems.length === 0) {
     cartItemsList.innerHTML = "";
-    if (cartEmptyNotice) cartEmptyNotice.classList.remove("hidden");
-    if (cartFooterSection) cartFooterSection.classList.add("hidden");
+    if (cartEmptyNotice) {
+      cartEmptyNotice.classList.remove("hidden");
+      cartEmptyNotice.style.display = "flex";
+    }
+    if (cartFooterSection) {
+      cartFooterSection.classList.add("hidden");
+      cartFooterSection.style.display = "none";
+    }
     return;
   }
 
-  if (cartEmptyNotice) cartEmptyNotice.classList.add("hidden");
-  if (cartFooterSection) cartFooterSection.classList.remove("hidden");
+  if (cartEmptyNotice) {
+    cartEmptyNotice.classList.add("hidden");
+    cartEmptyNotice.style.display = "none";
+  }
+  if (cartFooterSection) {
+    cartFooterSection.classList.remove("hidden");
+    cartFooterSection.style.display = "block";
+  }
 
   let productsSubtotal = 0;
 
@@ -3224,9 +3271,11 @@ function generatePrintablePriceReport() {
   `;
 
   reportArea.classList.remove("hidden");
+  reportArea.style.display = "block";
   window.print();
   setTimeout(() => {
     reportArea.classList.add("hidden");
+    reportArea.style.display = "none";
     reportArea.innerHTML = "";
   }, 800);
 }
@@ -3381,19 +3430,61 @@ document.addEventListener("DOMContentLoaded", () => {
   });
   document.getElementById("resetFromNoticeBtn")?.addEventListener("click", resetAllFilters);
 
-  // أحداث سلة الطلبات والتوصيل
+  // أحداث سلة الطلبات والتوصيل (Modal Popup)
+  const syncBodyModalLock = () => {
+    const cartEl = document.getElementById("cartDrawer");
+    const printEl = document.getElementById("printModal");
+    const anyOpen =
+      (cartEl && cartEl.style.display === "flex") ||
+      (printEl && printEl.style.display === "flex");
+    document.body.classList.toggle("overflow-hidden", Boolean(anyOpen));
+  };
+
   const openCart = () => {
-    document.getElementById("cartDrawer")?.classList.remove("hidden");
+    const cartEl = document.getElementById("cartDrawer");
+    if (cartEl) {
+      cartEl.classList.remove("hidden");
+      cartEl.style.display = "flex";
+    }
+    syncBodyModalLock();
     renderCartDrawer();
   };
+  const closeCart = () => {
+    const cartEl = document.getElementById("cartDrawer");
+    if (cartEl) {
+      cartEl.classList.add("hidden");
+      cartEl.style.display = "none";
+    }
+    syncBodyModalLock();
+  };
+
+  const openPrint = () => {
+    const printEl = document.getElementById("printModal");
+    if (printEl) {
+      printEl.classList.remove("hidden");
+      printEl.style.display = "flex";
+    }
+    syncBodyModalLock();
+    updatePrintCalculator();
+    ensurePdfJsLoaded().catch(() => {});
+  };
+  const closePrint = () => {
+    const printEl = document.getElementById("printModal");
+    if (printEl) {
+      printEl.classList.add("hidden");
+      printEl.style.display = "none";
+    }
+    syncBodyModalLock();
+  };
+
+  // تأكيد إخفاء النوافذ المنبثقة عند التهيئة
+  closeCart();
+  closePrint();
+
   document.getElementById("openCartBtn")?.addEventListener("click", openCart);
   document.getElementById("navBottomCart")?.addEventListener("click", openCart);
-  document.getElementById("closeCartBtn")?.addEventListener("click", () => {
-    document.getElementById("cartDrawer")?.classList.add("hidden");
-  });
-  document.getElementById("browseBooksFromCartBtn")?.addEventListener("click", () => {
-    document.getElementById("cartDrawer")?.classList.add("hidden");
-  });
+  document.getElementById("closeCartBtn")?.addEventListener("click", closeCart);
+  document.getElementById("browseBooksFromCartBtn")?.addEventListener("click", closeCart);
   document.getElementById("clearCartBtn")?.addEventListener("click", () => {
     if (confirm("هل ترغب في إفراغ السلة بالكامل؟")) clearCart();
   });
@@ -3411,35 +3502,24 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // إغلاق النوافذ المنبثقة عند الضغط على الخلفية أو زر Escape
   document.getElementById("cartDrawer")?.addEventListener("click", (e) => {
-    if (e.target.id === "cartDrawer") {
-      document.getElementById("cartDrawer")?.classList.add("hidden");
-    }
+    if (e.target.id === "cartDrawer") closeCart();
   });
   document.getElementById("printModal")?.addEventListener("click", (e) => {
-    if (e.target.id === "printModal") {
-      document.getElementById("printModal")?.classList.add("hidden");
-    }
+    if (e.target.id === "printModal") closePrint();
   });
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape") {
-      document.getElementById("cartDrawer")?.classList.add("hidden");
-      document.getElementById("printModal")?.classList.add("hidden");
+      closeCart();
+      closePrint();
     }
   });
 
   // أحداث الطباعة الذكية (PDF.js يُحمّل تلقائياً عند فتح النافذة)
-  const openPrint = () => {
-    document.getElementById("printModal")?.classList.remove("hidden");
-    updatePrintCalculator();
-    ensurePdfJsLoaded().catch(() => {});
-  };
   document.getElementById("openPrintModalBtn")?.addEventListener("click", openPrint);
   document.getElementById("heroPrintBtn")?.addEventListener("click", openPrint);
   document.getElementById("navBottomPrint")?.addEventListener("click", openPrint);
   document.getElementById("printingTabOpenCalcBtn")?.addEventListener("click", openPrint);
-  document.getElementById("closePrintModalBtn")?.addEventListener("click", () => {
-    document.getElementById("printModal")?.classList.add("hidden");
-  });
+  document.getElementById("closePrintModalBtn")?.addEventListener("click", closePrint);
 
   ["calcPagesCount", "calcCopiesCount", "calcColorType", "calcBindingType"].forEach((id) => {
     document.getElementById(id)?.addEventListener("input", updatePrintCalculator);
