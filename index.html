@@ -17,9 +17,14 @@
   <meta property="og:description" content="تصفح أسعار الكتب الخارجية، الأدوات المكتبية، باكدجات السبلايز المخفضة، واطبع مذكراتك بحساب التكلفة الفوري والطلب عبر الواتساب." />
   <meta property="og:url" content="https://masarik-tourism.github.io/Nahr-Al-Elm-Library/" />
   <meta property="og:image" content="https://masarik-tourism.github.io/Nahr-Al-Elm-Library/icons/icon-512.png" />
+  <meta property="og:image:width" content="512" />
+  <meta property="og:image:height" content="512" />
+  <meta property="og:image:alt" content="شعار مكتبة نهر العلم - إدارة أ/ إيهاب" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="مكتبة نهر العلم - إدارة أ/ إيهاب" />
   <meta name="twitter:description" content="كتب خارجية • كراريس وأدوات مكتبية • باكدجات سبلايز • حاسبة طباعة PDF الذكية" />
+  <meta name="twitter:image" content="https://masarik-tourism.github.io/Nahr-Al-Elm-Library/icons/icon-512.png" />
+  <link rel="canonical" href="https://masarik-tourism.github.io/Nahr-Al-Elm-Library/" />
   <meta name="theme-color" content="#0A2540" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -158,7 +163,7 @@
       padding-bottom: calc(48px + env(safe-area-inset-bottom, 0px));
     }
     .floating-whatsapp {
-      bottom: 130px;
+      bottom: 136px;
     }
   </style>
 </head>
@@ -228,7 +233,8 @@
             class="hidden items-center gap-1 bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-white font-black text-[11px] sm:text-xs py-1.5 px-2 sm:px-2.5 rounded-xl shadow transition-all whitespace-nowrap"
           >
             <i class="fa-solid fa-mobile-screen-button text-xs"></i>
-            <span class="hidden md:inline">تثبيت PWA</span>
+            <span class="hidden sm:inline">تثبيت PWA</span>
+            <span class="sm:hidden">PWA</span>
           </button>
           <a
             id="installAppBtn"
@@ -573,15 +579,15 @@
           </div>
 
           <div class="flex flex-wrap items-center justify-center gap-2">
-            <button id="footerShareBtn" class="flex items-center gap-1.5 text-xs font-bold text-white bg-brand-navy hover:bg-slate-800 px-3 py-1.5 rounded-xl shadow-sm transition-all">
+            <button id="footerShareBtn" class="flex items-center gap-1.5 text-xs font-bold text-white bg-brand-navy hover:bg-slate-800 px-3.5 py-2 rounded-xl shadow-sm transition-all">
               <i class="fa-solid fa-share-nodes text-amber-300"></i>
               <span>مشاركة رابط المكتبة</span>
             </button>
-            <a id="footerPhonePrimaryLink" href="tel:01002968331" class="flex items-center gap-1.5 text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-3 py-1.5 rounded-xl border border-emerald-200 transition-all">
+            <a id="footerPhonePrimaryLink" href="tel:01002968331" class="flex items-center gap-1.5 text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-3.5 py-2 rounded-xl border border-emerald-200 transition-all">
               <i class="fa-solid fa-phone"></i>
               <span id="footerPhonePrimaryText" dir="ltr">01002968331</span>
             </a>
-            <a id="footerPhoneSecondaryLink" href="tel:01157706887" class="flex items-center gap-1.5 text-xs font-bold text-sky-700 bg-sky-50 hover:bg-sky-100 px-3 py-1.5 rounded-xl border border-sky-200 transition-all">
+            <a id="footerPhoneSecondaryLink" href="tel:01157706887" class="flex items-center gap-1.5 text-xs font-bold text-sky-700 bg-sky-50 hover:bg-sky-100 px-3.5 py-2 rounded-xl border border-sky-200 transition-all">
               <i class="fa-solid fa-mobile-screen"></i>
               <span id="footerPhoneSecondaryText" dir="ltr">01157706887</span>
             </a>
@@ -589,7 +595,7 @@
               id="footerApkDownloadBtn"
               href="https://github.com/masarik-tourism/Nahr-Al-Elm-Library/releases/latest/download/Nahr-Al-Elm-Library.apk"
               rel="noopener"
-              class="flex items-center gap-1.5 text-xs font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 px-3 py-1.5 rounded-xl border border-emerald-200 transition-all"
+              class="flex items-center gap-1.5 text-xs font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 px-3.5 py-2 rounded-xl border border-emerald-200 transition-all"
             >
               <i class="fa-brands fa-android text-emerald-600"></i>
               <span>تحميل تطبيق الأندرويد مباشرة</span>
@@ -864,7 +870,8 @@
     target="_blank"
     rel="noopener"
     title="استفسار سريع عبر الواتساب"
-    class="floating-whatsapp app-tap-effect fixed left-4 z-30 flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2.5 rounded-full shadow-2xl border-2 border-white transition-all"
+    aria-label="استفسار سريع عبر الواتساب"
+    class="floating-whatsapp app-tap-effect fixed left-4 z-30 min-w-[48px] min-h-[48px] flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2.5 rounded-full shadow-2xl border-2 border-white transition-all"
   >
     <i class="fa-brands fa-whatsapp text-xl"></i>
     <span class="hidden sm:inline text-xs font-black">استفسار واتساب</span>
