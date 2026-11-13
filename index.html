@@ -5,8 +5,21 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover" />
   <title>مكتبة نهر العلم - إدارة أ/ إيهاب</title>
 
-  <!-- معلومات التطبيق والبحث -->
-  <meta name="description" content="تطبيق مكتبة نهر العلم - إدارة أ/ إيهاب للكتب الخارجية المعتمدة، الأدوات المكتبية والكراريس، باكدجات السبلايز، الهدايا، وخدمات الطباعة الذكية." />
+  <!-- معلومات التطبيق والبحث (SEO & Open Graph Meta Tags) -->
+  <meta name="description" content="مكتبة نهر العلم - إدارة أ/ إيهاب: أكبر مكتبة للكتب الخارجية المعتمدة (سلاح التلميذ، الأضواء، المعاصر، الامتحان)، الأدوات المكتبية والكراريس، باكدجات السبلايز المخفضة، الهدايا، وخدمات طباعة المذكرات PDF أونلاين." />
+  <meta name="keywords" content="مكتبة نهر العلم, إدارة أ إيهاب, كتب خارجية, المعاصر, سلاح التلميذ, الامتحان, الأضواء, باكدجات سبلايز, أدوات مكتبية, كراريس, طباعة مذكرات PDF, حاسبة طباعة" />
+  <meta name="author" content="مكتبة نهر العلم - إدارة أ/ إيهاب" />
+  <meta name="robots" content="index, follow" />
+  <meta property="og:type" content="website" />
+  <meta property="og:locale" content="ar_EG" />
+  <meta property="og:site_name" content="مكتبة نهر العلم - إدارة أ/ إيهاب" />
+  <meta property="og:title" content="مكتبة نهر العلم | كتب خارجية، باكدجات سبلايز، وطباعة مذكرات PDF" />
+  <meta property="og:description" content="تصفح أسعار الكتب الخارجية، الأدوات المكتبية، باكدجات السبلايز المخفضة، واطبع مذكراتك بحساب التكلفة الفوري والطلب عبر الواتساب." />
+  <meta property="og:url" content="https://masarik-tourism.github.io/Nahr-Al-Elm-Library/" />
+  <meta property="og:image" content="https://masarik-tourism.github.io/Nahr-Al-Elm-Library/icons/icon-512.png" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="مكتبة نهر العلم - إدارة أ/ إيهاب" />
+  <meta name="twitter:description" content="كتب خارجية • كراريس وأدوات مكتبية • باكدجات سبلايز • حاسبة طباعة PDF الذكية" />
   <meta name="theme-color" content="#0A2540" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -262,8 +275,8 @@
       </div>
     </section>
 
-    <!-- البطاقة الترحيبية وشريط البحث الفوري (Live Search Bar) -->
-    <section class="max-w-7xl mx-auto px-3 pt-3 space-y-3">
+    <!-- البطاقة الترحيبية -->
+    <section class="max-w-7xl mx-auto px-3 pt-3">
       <div class="relative bg-gradient-to-r from-brand-deepBlue via-slate-900 to-brand-navy rounded-2xl p-4 sm:p-5 text-white shadow-md border border-white/10 overflow-hidden">
         <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-3 relative z-10">
           <div class="space-y-1">
@@ -288,24 +301,6 @@
               <span>مشاركة رابط المكتبة</span>
             </button>
           </div>
-        </div>
-      </div>
-
-      <!-- شريط البحث الذكي الفوري -->
-      <div class="bg-white rounded-2xl shadow-sm border border-slate-200/90 p-2.5 sm:p-3">
-        <div class="relative flex items-center">
-          <span class="absolute right-3.5 text-emerald-600 text-sm pointer-events-none">
-            <i class="fa-solid fa-magnifying-glass"></i>
-          </span>
-          <input
-            type="text"
-            id="liveSearchInput"
-            placeholder="ابحث بالاسم عن كتاب (مثل: المعاصر، سلاح التلميذ) أو كراسة أو باكدج سبلايز أو هدية..."
-            class="w-full pr-10 pl-10 py-2.5 text-xs sm:text-sm font-semibold bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white text-slate-800 transition-all"
-          />
-          <button id="clearSearchBtn" title="مسح البحث" class="hidden absolute left-3 text-slate-400 hover:text-rose-500 p-1">
-            <i class="fa-solid fa-circle-xmark text-base"></i>
-          </button>
         </div>
       </div>
     </section>
@@ -339,9 +334,36 @@
     </section>
 
     <!-- ========================================== -->
-    <!-- 5. شريط تبويب الأقسام الرئيسية والفلاتر     -->
+    <!-- 5. شريط البحث السريع والأقسام والفلاتر     -->
     <!-- ========================================== -->
     <section class="max-w-7xl mx-auto px-3 space-y-3">
+
+      <!-- شريط البحث السريع بتصميم عصري في أعلى قسم المنتجات -->
+      <div class="bg-white rounded-2xl shadow-sm border border-emerald-200/80 p-3 sm:p-3.5 space-y-2.5">
+        <div class="relative flex items-center">
+          <span class="absolute right-3.5 text-emerald-600 text-sm pointer-events-none">
+            <i class="fa-solid fa-magnifying-glass"></i>
+          </span>
+          <input
+            type="text"
+            id="liveSearchInput"
+            aria-label="ابحث في منتجات مكتبة نهر العلم"
+            placeholder="ابحث بالاسم الفوري (مثل: المعاصر، سلاح التلميذ، كراريس، سبلايز)..."
+            class="w-full pr-10 pl-10 py-2.5 text-xs sm:text-sm font-semibold bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white text-slate-800 transition-all"
+          />
+          <button id="clearSearchBtn" title="مسح البحث" class="hidden absolute left-3 text-slate-400 hover:text-rose-500 p-1">
+            <i class="fa-solid fa-circle-xmark text-base"></i>
+          </button>
+        </div>
+        <div class="flex items-center gap-1.5 overflow-x-auto custom-scroll pb-0.5 text-[11px]">
+          <span class="text-slate-400 font-bold shrink-0">بحث سريع:</span>
+          <button type="button" data-search-chip="المعاصر" class="quick-search-chip shrink-0 bg-slate-100 hover:bg-emerald-50 text-slate-700 hover:text-emerald-700 font-bold px-2.5 py-1 rounded-lg border border-slate-200 transition-colors">المعاصر</button>
+          <button type="button" data-search-chip="سلاح التلميذ" class="quick-search-chip shrink-0 bg-slate-100 hover:bg-emerald-50 text-slate-700 hover:text-emerald-700 font-bold px-2.5 py-1 rounded-lg border border-slate-200 transition-colors">سلاح التلميذ</button>
+          <button type="button" data-search-chip="كراريس" class="quick-search-chip shrink-0 bg-slate-100 hover:bg-emerald-50 text-slate-700 hover:text-emerald-700 font-bold px-2.5 py-1 rounded-lg border border-slate-200 transition-colors">كراريس</button>
+          <button type="button" data-search-chip="سبلايز" class="quick-search-chip shrink-0 bg-slate-100 hover:bg-emerald-50 text-slate-700 hover:text-emerald-700 font-bold px-2.5 py-1 rounded-lg border border-slate-200 transition-colors">سبلايز</button>
+          <button type="button" data-search-chip="الامتحان" class="quick-search-chip shrink-0 bg-slate-100 hover:bg-emerald-50 text-slate-700 hover:text-emerald-700 font-bold px-2.5 py-1 rounded-lg border border-slate-200 transition-colors">الامتحان</button>
+        </div>
+      </div>
 
       <!-- شريط التبويب الرئيسي الواضح -->
       <div id="mainCategoryTabs" class="flex items-center gap-2 overflow-x-auto custom-scroll pb-1 select-none">
@@ -371,8 +393,8 @@
         </button>
       </div>
 
-      <!-- فلاتر الكتب والسبلايز (تظهر فقط عند اختيار الكتب الخارجية أو باكدجات السبلايز) -->
-      <div id="educationalFiltersPanel" class="hidden bg-white rounded-2xl shadow-sm border border-slate-200/90 p-3.5 sm:p-4">
+      <!-- فلاتر المراحل والصفوف والمواد الديناميكية (الكل / الكتب / السبلايز) -->
+      <div id="educationalFiltersPanel" class="bg-white rounded-2xl shadow-sm border border-slate-200/90 p-3.5 sm:p-4">
         <div class="flex items-center justify-between pb-2.5 border-b border-slate-100 mb-3">
           <div class="flex items-center gap-2 text-slate-800 font-black text-xs sm:text-sm">
             <i class="fa-solid fa-sliders text-emerald-600"></i>
@@ -637,22 +659,28 @@
           </div>
         </div>
 
-        <div class="grid grid-cols-2 gap-3">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label for="calcColorType" class="block text-xs font-bold text-slate-700 mb-1">نوع الطباعة:</label>
             <select id="calcColorType" class="w-full text-xs font-bold bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 text-slate-900 focus:ring-2 focus:ring-sky-500">
-              <option value="bw">أبيض وأسود ليزر</option>
-              <option value="color">ألوان عالية الدقة</option>
+              <option value="bw">أبيض وأسود ليزر (0.75 ج.م / ورقة)</option>
+              <option value="color">ألوان عالية الدقة (2.50 ج.م / ورقة)</option>
             </select>
+            <p id="calcColorRateHint" class="text-[10px] font-bold text-sky-700 mt-1 pr-1">
+              سعر الورقة: أبيض وأسود 0.75 ج.م • ألوان 2.50 ج.م
+            </p>
           </div>
           <div>
             <label for="calcBindingType" class="block text-xs font-bold text-slate-700 mb-1">نوع التغليف والتجليد:</label>
             <select id="calcBindingType" class="w-full text-xs font-bold bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 text-slate-900 focus:ring-2 focus:ring-sky-500">
-              <option value="wire">تغليف سلك حديد</option>
-              <option value="plastic">تغليف بلاستيك</option>
-              <option value="staple">تدبيس</option>
-              <option value="none">بدون تغليف</option>
+              <option value="wire">تغليف سلك حديد (+25.00 ج.م)</option>
+              <option value="plastic">تغليف بلاستيك (+15.00 ج.م)</option>
+              <option value="staple">تدبيس (+3.00 ج.م)</option>
+              <option value="none">بدون تغليف (مجاناً)</option>
             </select>
+            <p id="calcBindingRateHint" class="text-[10px] font-bold text-emerald-700 mt-1 pr-1">
+              سعر التغليف المحدد: سلك حديد 25.00 ج.م للنسخة
+            </p>
           </div>
         </div>
 
@@ -688,10 +716,10 @@
   </div>
 
   <!-- ========================================== -->
-  <!-- 10. نافذة سلة الطلبات الذكية (Modal Popup مخفي افتراضياً) -->
+  <!-- 10. سلة الطلبات الذكية (Slide-over Drawer مخفي افتراضياً) -->
   <!-- ========================================== -->
-  <div id="cartDrawer" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="cartModalTitle" class="hidden fixed inset-0 z-[60] bg-black/65 backdrop-blur-sm items-center justify-center p-3 select-none">
-    <div id="cartModalCard" class="bg-white w-full max-w-lg max-h-[90vh] rounded-3xl shadow-2xl border border-slate-200 flex flex-col justify-between overflow-hidden">
+  <div id="cartDrawer" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="cartModalTitle" class="hidden fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm justify-end select-none">
+    <div id="cartModalCard" class="bg-white w-full max-w-md h-full shadow-2xl border-r border-slate-200 flex flex-col justify-between overflow-hidden transform -translate-x-full transition-transform duration-300 ease-out">
 
       <div class="p-4 bg-brand-navy text-white flex items-center justify-between shrink-0">
         <div class="flex items-center gap-2">
