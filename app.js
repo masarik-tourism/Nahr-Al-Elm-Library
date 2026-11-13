@@ -41,6 +41,7 @@ const STORAGE_KEYS = {
   BOOKS: "nahralelm_books_v2",
   RATES: "nahralelm_print_rates_v2",
   BANNER: "nahralelm_announcement_v2",
+  SETTINGS: "nahralelm_store_settings_v2",
   CART: "nahralelm_cart_v2"
 };
 
@@ -494,6 +495,14 @@ const DEFAULT_ANNOUNCEMENT = {
   active: true
 };
 
+// إعدادات التواصل وعنوان المكتبة وخريطة جوجل الافتراضية
+const DEFAULT_STORE_SETTINGS = {
+  primaryWhatsapp: "01002968331",
+  secondaryWhatsapp: "01157706887",
+  address: "شارع المدرسة الرئيسي - بجوار المدارس (استلام وتجهيز مسبق يومياً)",
+  mapsUrl: "https://maps.google.com/?q=%D9%85%D9%83%D8%AA%D8%A8%D8%A9+%D9%86%D9%87%D8%B1+%D8%A7%D9%84%D8%B9%D9%84%D9%85"
+};
+
 // تسميات الأقسام بالعربية
 const CATEGORY_TITLES = {
   all: "جميع منتجات وخدمات مكتبة نهر العلم",
@@ -510,6 +519,7 @@ const CATEGORY_TITLES = {
 let currentBooks = [];
 let currentPrintRates = { ...DEFAULT_PRINT_RATES };
 let currentAnnouncement = { ...DEFAULT_ANNOUNCEMENT };
+let currentStoreSettings = { ...DEFAULT_STORE_SETTINGS };
 let cartItems = [];
 let activeCategory = "all";
 let searchQuery = "";
@@ -518,6 +528,18 @@ let deferredInstallPrompt = null;
 let failedLoginAttempts = 0;
 let isAdminAuthenticated = false;
 let activeAdminProfile = "";
+
+function getWhatsAppInternational(rawNumber) {
+  const digits = String(rawNumber || "").replace(/\D/g, "");
+  if (!digits) return STORE_WHATSAPP_NUMBER;
+  if (digits.startsWith("20") && digits.length >= 12) return digits;
+  if (digits.startsWith("0")) return `2${digits}`;
+  return digits;
+}
+
+function getStoreWhatsAppNumber() {
+  return getWhatsAppInternational(currentStoreSettings.primaryWhatsapp || STORE_WHATSAPP_NUMBER);
+}
 
 // =========================================================================
 // 4. دوال الأمان والتشفير والتحقق الإداري الخفي
@@ -805,6 +827,18 @@ function listenToFirebaseUpdates() {
       firebaseDb.ref("announcement").set(currentAnnouncement).catch(() => {});
     }
   });
+
+  firebaseDb.ref("storeSettings").on("value", (snapshot) => {
+    const data = snapshot.val();
+    if (data && typeof data === "object") {
+      currentStoreSettings = { ...DEFAULT_STORE_SETTINGS, ...data };
+      localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(currentStoreSettings));
+      applyStoreSettingsToPublicUI();
+      if (isAdminAuthenticated) populateStoreSettingsForm();
+    } else {
+      firebaseDb.ref("storeSettings").set(currentStoreSettings).catch(() => {});
+    }
+  });
 }
 
 function persistBooksData() {
@@ -825,6 +859,47 @@ function persistAnnouncement() {
   localStorage.setItem(STORAGE_KEYS.BANNER, JSON.stringify(currentAnnouncement));
   if (firebaseDb) {
     firebaseDb.ref("announcement").set(currentAnnouncement).catch((err) => console.warn("Sync warning:", err));
+  }
+}
+
+function persistStoreSettings() {
+  localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(currentStoreSettings));
+  if (firebaseDb) {
+    firebaseDb.ref("storeSettings").set(currentStoreSettings).catch((err) => console.warn("Sync warning:", err));
+  }
+}
+
+function applyStoreSettingsToPublicUI() {
+  const primaryLocal = String(currentStoreSettings.primaryWhatsapp || DEFAULT_STORE_SETTINGS.primaryWhatsapp).trim();
+  const secondaryLocal = String(currentStoreSettings.secondaryWhatsapp || DEFAULT_STORE_SETTINGS.secondaryWhatsapp).trim();
+  const address = String(currentStoreSettings.address || DEFAULT_STORE_SETTINGS.address).trim();
+  const mapsUrl = String(currentStoreSettings.mapsUrl || DEFAULT_STORE_SETTINGS.mapsUrl).trim();
+  const intlWa = getStoreWhatsAppNumber();
+
+  const phone1Link = document.getElementById("footerPhonePrimaryLink");
+  const phone1Text = document.getElementById("footerPhonePrimaryText");
+  if (phone1Link) phone1Link.setAttribute("href", `tel:${primaryLocal}`);
+  if (phone1Text) phone1Text.textContent = primaryLocal;
+
+  const phone2Link = document.getElementById("footerPhoneSecondaryLink");
+  const phone2Text = document.getElementById("footerPhoneSecondaryText");
+  if (phone2Link) phone2Link.setAttribute("href", `tel:${secondaryLocal}`);
+  if (phone2Text) phone2Text.textContent = secondaryLocal;
+
+  const addrEl = document.getElementById("storeAddressDisplay");
+  if (addrEl) addrEl.textContent = address;
+
+  const mapsBtn = document.getElementById("storeMapsLinkBtn");
+  if (mapsBtn && mapsUrl) {
+    mapsBtn.setAttribute("href", mapsUrl);
+  }
+
+  const floatingWa = document.getElementById("floatingWhatsAppBtn");
+  if (floatingWa) {
+    floatingWa.setAttribute(
+      "href",
+      `https://wa.me/${intlWa}?text=${encodeURIComponent("مرحباً مكتبة نهر العلم (إدارة أ/ إيهاب)، لدي استفسار سريع.")}`
+    );
   }
 }
 
@@ -857,6 +932,13 @@ function loadInitialState() {
     currentAnnouncement = savedBanner ? { ...DEFAULT_ANNOUNCEMENT, ...JSON.parse(savedBanner) } : { ...DEFAULT_ANNOUNCEMENT };
   } catch (_) {
     currentAnnouncement = { ...DEFAULT_ANNOUNCEMENT };
+  }
+
+  try {
+    const savedSettings = localStorage.getItem(STORAGE_KEYS.SETTINGS);
+    currentStoreSettings = savedSettings ? { ...DEFAULT_STORE_SETTINGS, ...JSON.parse(savedSettings) } : { ...DEFAULT_STORE_SETTINGS };
+  } catch (_) {
+    currentStoreSettings = { ...DEFAULT_STORE_SETTINGS };
   }
 
   try {
@@ -1050,19 +1132,40 @@ function renderHotDeals() {
 function renderCatalogGrid() {
   const catalogGrid = document.getElementById("catalogGrid");
   const noResultsNotice = document.getElementById("noResultsNotice");
+  const missingBookCtaBox = document.getElementById("missingBookCtaBox");
   const filteredItemsCount = document.getElementById("filteredItemsCount");
+  const filteredItemsLoadingLabel = document.getElementById("filteredItemsLoadingLabel");
+  const filteredItemsReadyLabel = document.getElementById("filteredItemsReadyLabel");
   if (!catalogGrid) return;
 
   const items = getFilteredProducts();
+  if (filteredItemsLoadingLabel) filteredItemsLoadingLabel.classList.add("hidden");
+  if (filteredItemsReadyLabel) filteredItemsReadyLabel.classList.remove("hidden");
   if (filteredItemsCount) filteredItemsCount.textContent = items.length;
+
+  const hasUserFilter =
+    Boolean(searchQuery.trim()) ||
+    activeCategory !== "all" ||
+    (document.getElementById("stageSelect")?.value || "all") !== "all" ||
+    (document.getElementById("gradeSelect")?.value || "all") !== "all" ||
+    (document.getElementById("subjectSelect")?.value || "all") !== "all" ||
+    (document.getElementById("publisherSelect")?.value || "all") !== "all";
 
   if (items.length === 0) {
     catalogGrid.innerHTML = "";
-    if (noResultsNotice) noResultsNotice.classList.remove("hidden");
+    if (hasUserFilter) {
+      if (noResultsNotice) noResultsNotice.classList.remove("hidden");
+      if (missingBookCtaBox) missingBookCtaBox.classList.add("hidden");
+    } else {
+      if (noResultsNotice) noResultsNotice.classList.add("hidden");
+      if (missingBookCtaBox) missingBookCtaBox.classList.remove("hidden");
+      catalogGrid.innerHTML = `<div class="col-span-full bg-white rounded-2xl p-6 text-center border border-slate-200 text-xs font-bold text-slate-500"><i class="fa-solid fa-spinner fa-spin text-emerald-600 ml-1"></i> جاري تحميل منتجات المكتبة...</div>`;
+    }
     return;
   }
 
   if (noResultsNotice) noResultsNotice.classList.add("hidden");
+  if (missingBookCtaBox) missingBookCtaBox.classList.remove("hidden");
 
   catalogGrid.innerHTML = items
     .map((item) => {
@@ -1083,7 +1186,7 @@ function renderCatalogGrid() {
       return `
         <article class="bg-white rounded-2xl border border-slate-200/90 shadow-sm hover:shadow-md transition-all overflow-hidden flex flex-col justify-between group ${isOutOfStock ? "opacity-85" : ""}">
           <div>
-            <!-- صورة المنتج مع Fallback أنيق -->
+            <!-- صورة المنتج مع Fallback أنيق وزر مشاركة -->
             <div class="relative aspect-[4/3] bg-slate-100 overflow-hidden">
               <img
                 src="${escapeHtml(thumbUrl)}"
@@ -1126,15 +1229,23 @@ function renderCatalogGrid() {
             </div>
           </div>
 
-          <!-- السعر وأزرار الطلب -->
+          <!-- السعر وأزرار الطلب والمشاركة -->
           <div class="px-2.5 pb-2.5 sm:px-3.5 sm:pb-3.5 pt-2 border-t border-slate-100 space-y-2">
-            <div class="flex items-baseline justify-between gap-1">
+            <div class="flex items-center justify-between gap-1">
               <div class="flex items-baseline gap-1.5">
                 <span class="text-emerald-700 font-black text-sm sm:text-base">
                   ${item.price} <span class="text-[11px] font-bold">ج.م</span>
                 </span>
                 ${hasDiscount ? `<span class="text-[10px] sm:text-xs text-slate-400 line-through">${item.originalPrice}</span>` : ""}
               </div>
+              <button
+                type="button"
+                onclick="shareProductWhatsApp('${escapeHtml(item.id)}')"
+                title="مشاركة المنتج مع أصدقائك عبر الواتساب"
+                class="app-tap-effect w-7 h-7 rounded-lg bg-slate-100 hover:bg-sky-50 text-slate-500 hover:text-sky-600 flex items-center justify-center transition-all border border-slate-200/80"
+              >
+                <i class="fa-solid fa-share-nodes text-[11px]"></i>
+              </button>
             </div>
 
             <div class="flex items-center gap-1.5">
@@ -1185,8 +1296,40 @@ function refreshStorefrontViews() {
 }
 
 function generateItemWhatsAppUrl(item) {
-  const msg = `مرحباً مكتبة نهر العلم (إدارة أ/ إيهاب)،\nأود الاستفسار وطلب المنتج التالي:\n- المنتج: ${item.title}\n- المرحلة/الفئة: ${item.stage} (${item.grade})\n- السعر: ${item.price} ج.م\n\nأرجو تأكيد التوفر وتجهيز الطلب، شكراً لكم!`;
-  return `https://wa.me/${STORE_WHATSAPP_NUMBER}?text=${encodeURIComponent(msg)}`;
+  const intlWa = getStoreWhatsAppNumber();
+  const msg =
+    `مرحباً مكتبة نهر العلم (إدارة أ/ إيهاب)،\n` +
+    `أود الاستفسار وطلب المنتج التالي:\n\n` +
+    `📦 المنتج: ${item.title}\n` +
+    `🎓 المرحلة: ${item.stage || "عام"}\n` +
+    `🏫 الصف الدراسي: ${item.grade || "جميع الصفوف"}\n` +
+    `📚 المادة/الفئة: ${item.subject || "عام"}\n` +
+    `💰 السعر: ${item.price} ج.م\n\n` +
+    `أرجو تأكيد التوفر وتجهيز الطلب، شكراً لكم!`;
+  return `https://wa.me/${intlWa}?text=${encodeURIComponent(msg)}`;
+}
+
+function shareProductWhatsApp(itemId) {
+  const item = currentBooks.find((b) => b.id === itemId);
+  if (!item) return;
+  const shareUrl =
+    window.location.protocol === "file:" ? STORE_PUBLIC_URL : window.location.href;
+  const msg =
+    `شاهد هذا المنتج في *مكتبة نهر العلم - إدارة أ/ إيهاب* 📚\n\n` +
+    `📦 *${item.title}*\n` +
+    `🏫 ${item.grade || ""}${item.subject ? ` • ${item.subject}` : ""}\n` +
+    `💰 السعر: *${item.price} ج.م*\n\n` +
+    `🔗 تصفح واطلب الآن عبر رابط المكتبة:\n${shareUrl}`;
+  window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, "_blank", "noopener");
+}
+
+function openRequestMissingItemWhatsApp() {
+  const intlWa = getStoreWhatsAppNumber();
+  const typed = (searchQuery || document.getElementById("liveSearchInput")?.value || "").trim();
+  const msg = typed
+    ? `مرحباً مكتبة نهر العلم (إدارة أ/ إيهاب)،\nأبحث عن: "${typed}" ولم أجده في القائمة.\nأرجو إفادتي بالتوفر والسعر، واسم الطلب/الكتاب المطلوب بالتفصيل هو:\n`
+    : `مرحباً مكتبة نهر العلم (إدارة أ/ إيهاب)،\nأود طلب كتاب أو أداة مدرسية غير ظاهرة في البحث، وتفاصيل طلبي هي:\n• اسم الكتاب / الأداة: \n• المرحلة والصف الدراسي: \n`;
+  window.open(`https://wa.me/${intlWa}?text=${encodeURIComponent(msg)}`, "_blank", "noopener");
 }
 
 function recordItemClick(itemId) {
@@ -1219,6 +1362,7 @@ function handleAddToCart(bookId) {
       price: book.price,
       grade: book.grade,
       stage: book.stage,
+      subject: book.subject,
       quantity: 1
     });
   }
@@ -1362,14 +1506,20 @@ function sendCartOrderWhatsApp() {
   cartItems.forEach((item, idx) => {
     const sub = item.price * item.quantity;
     productsSubtotal += sub;
-    message += `${idx + 1}. ${item.title} (${item.grade}) × ${item.quantity} = ${sub} ج.م\n`;
+    const catalogMatch = currentBooks.find((b) => b.id === item.id);
+    const stageText = item.stage || catalogMatch?.stage || "عام";
+    const gradeText = item.grade || catalogMatch?.grade || "جميع الصفوف";
+    const subjectText = item.subject || catalogMatch?.subject || "عام";
+    message += `${idx + 1}. *${item.title}*\n`;
+    message += `   • المرحلة: ${stageText} | الصف: ${gradeText} | المادة: ${subjectText}\n`;
+    message += `   • الكمية: ${item.quantity} × ${item.price} ج.م = *${sub} ج.م*\n\n`;
   });
 
   const deliveryFee = Math.max(0, Number(currentPrintRates.deliveryFee ?? 20));
   const appliedDelivery = deliveryMethod === "delivery" ? deliveryFee : 0;
   const grandTotal = productsSubtotal + appliedDelivery;
 
-  message += `\n─────────────────────\n`;
+  message += `─────────────────────\n`;
   message += `🧾 إجمالي المنتجات: ${productsSubtotal} ج.م\n`;
   message += `🚚 طريقة الاستلام: ${deliveryMethod === "delivery" ? "توصيل للمنزل" : "استلام وتجهيز مسبق من المكتبة"}\n`;
   if (deliveryMethod === "delivery") {
@@ -1380,7 +1530,7 @@ function sendCartOrderWhatsApp() {
   message += `👤 اسم العميل: ${customerName}\n`;
   message += `\nشكراً لتعاونكم!`;
 
-  const url = `https://wa.me/${STORE_WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
+  const url = `https://wa.me/${getStoreWhatsAppNumber()}?text=${encodeURIComponent(message)}`;
   window.open(url, "_blank");
 }
 
@@ -1537,7 +1687,7 @@ function sendPrintOrderWhatsApp() {
   msg += `💵 التكلفة الإجمالية المقدرة: ${totalEstimate}\n\n`;
   msg += `سأقوم بإرفاق ملف المذكرة الآن هنا داخل المحادثة، أرجو تأكيد التجهيز!`;
 
-  const url = `https://wa.me/${STORE_WHATSAPP_NUMBER}?text=${encodeURIComponent(msg)}`;
+  const url = `https://wa.me/${getStoreWhatsAppNumber()}?text=${encodeURIComponent(msg)}`;
   window.open(url, "_blank");
 }
 
@@ -2138,7 +2288,43 @@ function mountFullAdminPanel() {
         <!-- ================================================= -->
         <!-- تبويب 4: إعدادات المتجر والنسخ الاحتياطي          -->
         <!-- ================================================= -->
-        <div id="adminTabBackupSettings" class="hidden space-y-4">
+        <div id="adminTabBackupSettings" class="hidden space-y-5">
+
+          <!-- إعدادات التواصل والواتساب وعنوان المكتبة وخريطة جوجل -->
+          <div class="bg-slate-800 rounded-2xl p-5 border border-slate-700 space-y-4">
+            <div class="pb-3 border-b border-slate-700">
+              <h3 class="text-base font-black text-white flex items-center gap-2">
+                <i class="fa-solid fa-sliders text-emerald-400"></i>
+                <span>إعدادات المتجر (أرقام الواتساب، العنوان، وخريطة جوجل)</span>
+              </h3>
+              <p class="text-xs text-slate-400">يتم تحديث أرقام التواصل وعنوان الفرع وزر Google Maps لجميع العملاء فوراً عبر السحابة.</p>
+            </div>
+
+            <form id="storeSettingsForm" class="space-y-3">
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label class="block text-xs font-bold text-slate-300 mb-1">رقم الواتساب الأساسي لاستقبال الطلبات:</label>
+                  <input type="text" id="settingPrimaryWhatsapp" placeholder="01002968331" dir="ltr" class="w-full text-xs bg-slate-900 border border-slate-700 rounded-xl px-3 py-2.5 text-white font-mono" required />
+                </div>
+                <div>
+                  <label class="block text-xs font-bold text-slate-300 mb-1">رقم الهاتف / الواتساب الثانوي:</label>
+                  <input type="text" id="settingSecondaryWhatsapp" placeholder="01157706887" dir="ltr" class="w-full text-xs bg-slate-900 border border-slate-700 rounded-xl px-3 py-2.5 text-white font-mono" />
+                </div>
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-slate-300 mb-1">نص عنوان المكتبة التفصيلي (يظهر في الفوتر):</label>
+                <input type="text" id="settingStoreAddress" placeholder="اكتب عنوان فرع المكتبة بالتفصيل..." class="w-full text-xs bg-slate-900 border border-slate-700 rounded-xl px-3 py-2.5 text-white" required />
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-slate-300 mb-1">رابط موقع المكتبة على خرائط جوجل (Google Maps URL):</label>
+                <input type="url" id="settingStoreMapsUrl" placeholder="https://maps.google.com/?q=..." dir="ltr" class="w-full text-xs bg-slate-900 border border-slate-700 rounded-xl px-3 py-2.5 text-white font-mono" required />
+              </div>
+              <button type="submit" class="bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs py-2.5 px-5 rounded-xl shadow flex items-center gap-2">
+                <i class="fa-solid fa-floppy-disk"></i><span>حفظ إعدادات المتجر ونشرها سحابياً</span>
+              </button>
+            </form>
+          </div>
+
           <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
 
             <div class="bg-slate-800 rounded-2xl p-5 border border-slate-700 flex flex-col justify-between space-y-3">
@@ -2326,6 +2512,7 @@ function mountFullAdminPanel() {
 
   document.getElementById("printingRatesForm")?.addEventListener("submit", handleSavePrintingRates);
   document.getElementById("announcementForm")?.addEventListener("submit", handleSaveAnnouncement);
+  document.getElementById("storeSettingsForm")?.addEventListener("submit", handleSaveStoreSettings);
   document.getElementById("quickToggleBannerBtn")?.addEventListener("click", handleQuickToggleAnnouncement);
   document.getElementById("quickSuppliesForm")?.addEventListener("submit", handleQuickAddSuppliesPackage);
 
@@ -2358,6 +2545,7 @@ function mountFullAdminPanel() {
   renderBackupCategoryBreakdown();
   populatePrintingRatesForm();
   populateAnnouncementForm();
+  populateStoreSettingsForm();
   updateAdminStats();
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
@@ -2865,14 +3053,47 @@ function renderBackupCategoryBreakdown() {
     .join("");
 }
 
+function populateStoreSettingsForm() {
+  const pWa = document.getElementById("settingPrimaryWhatsapp");
+  const sWa = document.getElementById("settingSecondaryWhatsapp");
+  const addr = document.getElementById("settingStoreAddress");
+  const maps = document.getElementById("settingStoreMapsUrl");
+
+  if (pWa) pWa.value = currentStoreSettings.primaryWhatsapp || DEFAULT_STORE_SETTINGS.primaryWhatsapp;
+  if (sWa) sWa.value = currentStoreSettings.secondaryWhatsapp || DEFAULT_STORE_SETTINGS.secondaryWhatsapp;
+  if (addr) addr.value = currentStoreSettings.address || DEFAULT_STORE_SETTINGS.address;
+  if (maps) maps.value = currentStoreSettings.mapsUrl || DEFAULT_STORE_SETTINGS.mapsUrl;
+}
+
+function handleSaveStoreSettings(e) {
+  e.preventDefault();
+  const primary = document.getElementById("settingPrimaryWhatsapp")?.value.trim() || DEFAULT_STORE_SETTINGS.primaryWhatsapp;
+  const secondary = document.getElementById("settingSecondaryWhatsapp")?.value.trim() || DEFAULT_STORE_SETTINGS.secondaryWhatsapp;
+  const address = document.getElementById("settingStoreAddress")?.value.trim() || DEFAULT_STORE_SETTINGS.address;
+  const mapsUrl = document.getElementById("settingStoreMapsUrl")?.value.trim() || DEFAULT_STORE_SETTINGS.mapsUrl;
+
+  currentStoreSettings = {
+    primaryWhatsapp: primary,
+    secondaryWhatsapp: secondary,
+    address,
+    mapsUrl
+  };
+
+  persistStoreSettings();
+  applyStoreSettingsToPublicUI();
+  renderCatalogGrid();
+  showToastNotification("تم حفظ إعدادات المتجر والواتساب والعنوان ونشرها سحابياً!");
+}
+
 function exportStoreBackupJson() {
   const payload = {
     app: "مكتبة نهر العلم - إدارة أ/ إيهاب",
-    version: "2.1.0",
+    version: "2.2.0",
     exportedAt: new Date().toISOString(),
     books: currentBooks,
     printRates: currentPrintRates,
-    announcement: currentAnnouncement
+    announcement: currentAnnouncement,
+    storeSettings: currentStoreSettings
   };
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json;charset=utf-8" });
   const url = URL.createObjectURL(blob);
@@ -2915,6 +3136,12 @@ function handleImportStoreBackupJson(e) {
         persistAnnouncement();
         populateAnnouncementForm();
         renderAnnouncementBanner();
+      }
+      if (parsed.storeSettings && typeof parsed.storeSettings === "object") {
+        currentStoreSettings = { ...DEFAULT_STORE_SETTINGS, ...parsed.storeSettings };
+        persistStoreSettings();
+        populateStoreSettingsForm();
+        applyStoreSettingsToPublicUI();
       }
 
       persistBooksData();
@@ -3052,6 +3279,7 @@ document.addEventListener("DOMContentLoaded", () => {
   initializeFirebase();
   registerServiceWorkerSafely();
   renderAnnouncementBanner();
+  applyStoreSettingsToPublicUI();
   toggleEducationalFiltersVisibility();
   populateDropdownFilters();
   renderHotDeals();
@@ -3061,6 +3289,9 @@ document.addEventListener("DOMContentLoaded", () => {
   setupHiddenAdminTrigger();
   handleInstallButtonVisibility();
   resolveBestApkDownloadUrl();
+
+  document.getElementById("noResultsRequestWhatsAppBtn")?.addEventListener("click", openRequestMissingItemWhatsApp);
+  document.getElementById("bottomRequestWhatsAppBtn")?.addEventListener("click", openRequestMissingItemWhatsApp);
 
   // الاحتفاظ بحدث PWA اختيارياً مع إبقاء زر التثبيت مخصصاً للتحميل المباشر لملف APK
   window.addEventListener("beforeinstallprompt", (e) => {

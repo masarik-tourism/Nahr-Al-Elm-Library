@@ -118,6 +118,9 @@
         display: none !important;
       }
     }
+    .hidden {
+      display: none !important;
+    }
     body {
       padding-bottom: 150px;
     }
@@ -442,7 +445,8 @@
           جميع منتجات مكتبة نهر العلم
         </h3>
         <span class="text-xs font-bold text-slate-500 bg-white px-2.5 py-1 rounded-lg border border-slate-200">
-          المنتجات المعروضة: <span id="filteredItemsCount" class="text-emerald-700 font-black">0</span>
+          <span id="filteredItemsLoadingLabel">جاري تحميل منتجات المكتبة...</span>
+          <span id="filteredItemsReadyLabel" class="hidden">المنتجات المعروضة: <span id="filteredItemsCount" class="text-emerald-700 font-black"></span></span>
         </span>
       </div>
 
@@ -454,7 +458,10 @@
     <!-- ========================================== -->
     <section class="max-w-7xl mx-auto px-3">
       <div id="catalogGrid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-4">
-        <!-- يتم بناء البطاقات ديناميكياً عبر app.js -->
+        <div class="col-span-full bg-white rounded-2xl p-6 text-center border border-slate-200 text-xs font-bold text-slate-500">
+          <i class="fa-solid fa-spinner fa-spin text-emerald-600 ml-1"></i>
+          جاري تحميل منتجات المكتبة...
+        </div>
       </div>
 
       <!-- رسالة في حال عدم وجود نتائج للبحث -->
@@ -464,10 +471,33 @@
         </div>
         <h3 class="text-base font-bold text-slate-800 mb-1">لا توجد منتجات مطابقة لبحثك</h3>
         <p class="text-xs text-slate-500 mb-4 max-w-sm mx-auto">
-          جرب البحث بكلمة أخرى أو تصفح قسم "الكل"، أو راسلنا على الواتساب وسنوفر لك أي طلب فوراً.
+          جرب البحث بكلمة أخرى أو تصفح قسم "الكل"، أو اطلب كتابك أو أداتك بالاسم مباشرة وسنوفرها لك فوراً.
         </p>
-        <button id="resetFromNoticeBtn" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-2 px-4 rounded-xl shadow-md transition-all">
-          عرض كافة المنتجات
+        <div class="flex flex-wrap items-center justify-center gap-2">
+          <button id="noResultsRequestWhatsAppBtn" class="app-tap-effect bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs py-2.5 px-4 rounded-xl shadow-md transition-all flex items-center gap-1.5">
+            <i class="fa-brands fa-whatsapp text-sm"></i>
+            <span>لم تجد كتابك أو طلبك؟ اطلبه الآن عبر الواتساب</span>
+          </button>
+          <button id="resetFromNoticeBtn" class="bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs py-2.5 px-4 rounded-xl border border-slate-300 transition-all">
+            عرض كافة المنتجات
+          </button>
+        </div>
+      </div>
+
+      <!-- زر بارز أسفل نتائج البحث لطلب أي كتاب أو منتج غير ظاهر -->
+      <div id="missingBookCtaBox" class="mt-4 bg-gradient-to-r from-emerald-50 via-white to-amber-50 rounded-2xl p-3.5 sm:p-4 border border-emerald-200/80 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-3">
+        <div class="flex items-center gap-2.5 text-center sm:text-right">
+          <div class="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center text-lg shrink-0 shadow">
+            <i class="fa-brands fa-whatsapp"></i>
+          </div>
+          <div>
+            <p class="text-xs sm:text-sm font-black text-slate-900">هل تبحث عن كتاب خارجي أو أداة مدرسية معينة؟</p>
+            <p class="text-[11px] text-slate-600">راسلنا فوراً باسم الكتاب أو الصف وسنؤكد لك التوفر والسعر خلال دقائق.</p>
+          </div>
+        </div>
+        <button id="bottomRequestWhatsAppBtn" class="app-tap-effect w-full sm:w-auto shrink-0 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs py-2.5 px-4 rounded-xl shadow-md transition-all flex items-center justify-center gap-2">
+          <i class="fa-brands fa-whatsapp text-base"></i>
+          <span>لم تجد كتابك أو طلبك؟ اطلبه الآن عبر الواتساب</span>
         </button>
       </div>
     </section>
@@ -476,7 +506,7 @@
     <!-- 7. بطاقة معلومات المكتبة ورابط المشاركة     -->
     <!-- ========================================== -->
     <section class="max-w-7xl mx-auto px-3 pt-2">
-      <div class="bg-white rounded-2xl p-4 border border-slate-200/90 shadow-sm">
+      <div class="bg-white rounded-2xl p-4 border border-slate-200/90 shadow-sm space-y-3">
         <div class="flex flex-col md:flex-row items-center justify-between gap-3">
           <div class="flex items-center gap-3">
             <div class="w-11 h-11 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center text-lg shrink-0">
@@ -493,13 +523,13 @@
               <i class="fa-solid fa-share-nodes text-amber-300"></i>
               <span>مشاركة رابط المكتبة</span>
             </button>
-            <a href="tel:01002968331" class="flex items-center gap-1.5 text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-3 py-1.5 rounded-xl border border-emerald-200 transition-all">
+            <a id="footerPhonePrimaryLink" href="tel:01002968331" class="flex items-center gap-1.5 text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-3 py-1.5 rounded-xl border border-emerald-200 transition-all">
               <i class="fa-solid fa-phone"></i>
-              <span dir="ltr">01002968331</span>
+              <span id="footerPhonePrimaryText" dir="ltr">01002968331</span>
             </a>
-            <a href="tel:01157706887" class="flex items-center gap-1.5 text-xs font-bold text-sky-700 bg-sky-50 hover:bg-sky-100 px-3 py-1.5 rounded-xl border border-sky-200 transition-all">
+            <a id="footerPhoneSecondaryLink" href="tel:01157706887" class="flex items-center gap-1.5 text-xs font-bold text-sky-700 bg-sky-50 hover:bg-sky-100 px-3 py-1.5 rounded-xl border border-sky-200 transition-all">
               <i class="fa-solid fa-mobile-screen"></i>
-              <span dir="ltr">01157706887</span>
+              <span id="footerPhoneSecondaryText" dir="ltr">01157706887</span>
             </a>
             <a
               id="footerApkDownloadBtn"
@@ -511,6 +541,27 @@
               <span>تحميل تطبيق الأندرويد مباشرة</span>
             </a>
           </div>
+        </div>
+
+        <!-- عنوان المكتبة ورابط خريطة جوجل للاستلام من الفرع -->
+        <div class="pt-3 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-2.5 bg-slate-50 rounded-xl p-3">
+          <div class="flex items-center gap-2 text-center sm:text-right">
+            <i class="fa-solid fa-location-dot text-rose-600 text-base shrink-0"></i>
+            <p class="text-xs font-bold text-slate-700">
+              <span class="text-slate-900 font-black">عنوان الفرع:</span>
+              <span id="storeAddressDisplay">شارع المدرسة الرئيسي - بجوار المدارس (استلام وتجهيز مسبق يومياً)</span>
+            </p>
+          </div>
+          <a
+            id="storeMapsLinkBtn"
+            href="https://maps.google.com/?q=%D9%85%D9%83%D8%AA%D8%A8%D8%A9+%D9%86%D9%87%D8%B1+%D8%A7%D9%84%D8%B9%D9%84%D9%85"
+            target="_blank"
+            rel="noopener"
+            class="app-tap-effect shrink-0 flex items-center gap-1.5 text-xs font-black text-white bg-rose-600 hover:bg-rose-700 px-3.5 py-2 rounded-xl shadow-sm transition-all"
+          >
+            <i class="fa-solid fa-map-location-dot"></i>
+            <span>موقعنا على خريطة جوجل (Google Maps)</span>
+          </a>
         </div>
       </div>
     </section>
